@@ -9,9 +9,7 @@ import traceback
 
 from src.core.rate_limiter import RateLimitManager
 from src.core.scoring import LeadScoringEngine
-from src.integrations.musicbrainz import musicbrainz_client
-from src.integrations.spotify import spotify_client
-from src.integrations.lastfm import lastfm_client
+from src.integrations.base_client import musicbrainz_client, spotify_client, lastfm_client
 from src.models.database import DatabaseManager
 from config.settings import settings
 

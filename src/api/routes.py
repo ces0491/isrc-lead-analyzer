@@ -11,9 +11,12 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from src.core.pipeline import LeadAggregationPipeline
-from src.core.rate_limiter import rate_limiter
+from src.core.rate_limiter import RateLimitManager
+rate_limiter = RateLimitManager()
+
 from src.models.database import DatabaseManager, get_db, Artist, Track
 from config.settings import settings
+from src.utils.validators import validate_isrc
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -74,7 +77,11 @@ def analyze_isrc():
         if not data or 'isrc' not in data:
             return jsonify({'error': 'ISRC required in request body'}), 400
         
-        isrc = data['isrc'].strip().upper()
+        is_valid, result = validate_isrc(data['isrc'])
+        if not is_valid:
+            return jsonify({'error': result}), 400
+        
+        isrc = result  # Use cleaned ISRC
         
         # Validate ISRC format (basic validation)
         if len(isrc) != 12 or not isrc.isalnum():
