@@ -2,7 +2,13 @@
 Configuration management for Precise Digital Lead Generation Tool
 """
 import os
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv  # Try to import dotenv
+except ImportError:
+    print("Warning: python-dotenv not installed. Environment variables will be read from system.")
+    def load_dotenv():
+        pass
+
 from dataclasses import dataclass
 from typing import Optional
 
@@ -146,7 +152,7 @@ class Settings:
             
         return len(missing_keys) == 0
 
-    def get_api_config(self, api_name: str) -> APIConfig:
+    def get_api_config(self, api_name: str) -> Optional[APIConfig]:  # Fixed: Return type is now Optional[APIConfig]
         """Get configuration for specific API"""
         return self.apis.get(api_name)
 

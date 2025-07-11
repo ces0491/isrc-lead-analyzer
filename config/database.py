@@ -1,3 +1,4 @@
+# config/database.py - Fixed version
 """
 Database configuration and models for Precise Digital Lead Generation Tool with YouTube Integration
 COMPLETE VERSION - Includes all YouTube fields and migration support
@@ -5,7 +6,7 @@ COMPLETE VERSION - Includes all YouTube fields and migration support
 import os
 from datetime import datetime
 from typing import Optional, Dict, List, Any, Union, cast
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Float, Text, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Float, Text, ForeignKey, text  # Added text import
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.types import JSON
@@ -158,8 +159,6 @@ def reset_db():
 
 def migrate_youtube_fields():
     """Add YouTube fields to existing database - MIGRATION FUNCTION"""
-    from sqlalchemy import text
-    
     migration_sql = [
         "ALTER TABLE artists ADD COLUMN youtube_channel_id VARCHAR(100);",
         "ALTER TABLE artists ADD COLUMN youtube_channel_url VARCHAR(500);",
@@ -176,7 +175,7 @@ def migrate_youtube_fields():
         with engine.connect() as conn:
             for sql in migration_sql:
                 try:
-                    conn.execute(text(sql))
+                    conn.execute(text(sql))  # Fixed: Now using imported text function
                     print(f"✅ Executed: {sql}")
                 except Exception as e:
                     if "duplicate column name" in str(e).lower() or "already exists" in str(e).lower():
@@ -552,7 +551,7 @@ def check_youtube_migration_needed():
     try:
         with engine.connect() as conn:
             # Try to select a YouTube column
-            result = conn.execute(text("SELECT youtube_channel_id FROM artists LIMIT 1"))
+            result = conn.execute(text("SELECT youtube_channel_id FROM artists LIMIT 1"))  # Fixed: Using imported text
             return False  # Migration already done
     except Exception:
         return True  # Migration needed

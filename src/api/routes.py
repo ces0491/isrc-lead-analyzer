@@ -102,17 +102,20 @@ def analyze_isrc():
             # Check if we have recent data for this ISRC
             try:
                 existing_track = db_manager.session.query(Track).filter_by(isrc=isrc).first()
-                if existing_track and existing_track.updated_at:
-                    # Return cached data if processed within last 24 hours
-                    time_diff = datetime.utcnow() - existing_track.updated_at
-                    if time_diff.total_seconds() < 86400:  # 24 hours
-                        return jsonify({
-                            'isrc': isrc,
-                            'status': 'cached',
-                            'message': 'Returning cached data. Use force_refresh=true to reprocess.',
-                            'artist_id': existing_track.artist_id,
-                            'last_updated': existing_track.updated_at.isoformat()
-                        })
+                if existing_track:
+                    # Get the updated_at value properly  
+                    track_updated_at = getattr(existing_track, 'updated_at', None)
+                    if track_updated_at:
+                        # Return cached data if processed within last 24 hours
+                        time_diff = datetime.utcnow() - track_updated_at
+                        if time_diff.total_seconds() < 86400:  # 24 hours
+                            return jsonify({
+                                'isrc': isrc,
+                                'status': 'cached',
+                                'message': 'Returning cached data. Use force_refresh=true to reprocess.',
+                                'artist_id': existing_track.artist_id,
+                                'last_updated': track_updated_at.isoformat()
+                            })
             except Exception as e:
                 # If cache check fails, continue with processing
                 print(f"Cache check failed: {e}")
@@ -214,11 +217,12 @@ def upload_isrcs():
         
         file = request.files['file']
         
-        if file.filename == '':
+        # Check if file was actually selected
+        if not file or not file.filename:  # Fixed: Handle None filename
             return jsonify({'error': 'No file selected'}), 400
         
         # Check file extension
-        filename = secure_filename(file.filename)
+        filename = secure_filename(file.filename)  # This is now safe because we checked above
         if not filename.lower().endswith(('.csv', '.txt')):
             return jsonify({'error': 'Only CSV and TXT files are supported'}), 400
         
@@ -355,6 +359,11 @@ def get_leads():
         # Format results including YouTube data
         results = []
         for artist in leads:
+            # Safe attribute access for datetime fields
+            last_release_date = getattr(artist, 'last_release_date', None)
+            created_at = getattr(artist, 'created_at', None)
+            updated_at = getattr(artist, 'updated_at', None)
+            
             result_item = {
                 'id': artist.id,
                 'name': artist.name,
@@ -367,7 +376,7 @@ def get_leads():
                 'geographic_score': artist.geographic_score,
                 'lead_tier': artist.lead_tier,
                 'monthly_listeners': artist.monthly_listeners,
-                'last_release_date': artist.last_release_date.isoformat() if artist.last_release_date else None,
+                'last_release_date': last_release_date.isoformat() if last_release_date else None,
                 'outreach_status': artist.outreach_status,
                 'contact_email': artist.contact_email,
                 'website': artist.website,
@@ -383,8 +392,8 @@ def get_leads():
                     'growth_potential': artist.youtube_growth_potential,
                     'engagement_rate': artist.youtube_engagement_rate or 0.0
                 },
-                'created_at': artist.created_at.isoformat(),
-                'updated_at': artist.updated_at.isoformat()
+                'created_at': created_at.isoformat() if created_at else None,
+                'updated_at': updated_at.isoformat() if updated_at else None
             }
             results.append(result_item)
         
@@ -468,6 +477,10 @@ def export_leads():
         
         # Write data including YouTube metrics
         for artist in leads:
+            # Safe datetime access
+            last_release_date = getattr(artist, 'last_release_date', None)
+            created_at = getattr(artist, 'created_at', None)
+            
             writer.writerow([
                 artist.name,
                 artist.country or '',
@@ -479,11 +492,11 @@ def export_leads():
                 artist.geographic_score,
                 artist.lead_tier,
                 artist.monthly_listeners or 0,
-                artist.last_release_date.strftime('%Y-%m-%d') if artist.last_release_date else '',
+                last_release_date.strftime('%Y-%m-%d') if last_release_date else '',
                 artist.outreach_status or '',
                 artist.contact_email or '',
                 artist.website or '',
-                str(artist.social_handles) if artist.social_handles else '',
+                str(getattr(artist, 'social_handles', '')) if getattr(artist, 'social_handles', None) else '',
                 # NEW: YouTube data columns
                 artist.youtube_channel_id or '',
                 artist.youtube_channel_url or '',
@@ -493,7 +506,7 @@ def export_leads():
                 artist.youtube_upload_frequency or '',
                 artist.youtube_growth_potential or '',
                 artist.youtube_engagement_rate or 0.0,
-                artist.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                created_at.strftime('%Y-%m-%d %H:%M:%S') if created_at else ''
             ])
         
         csv_content = output.getvalue()
@@ -531,6 +544,13 @@ def get_artist(artist_id):
         from config.database import ContactAttempt
         contacts = db_manager.session.query(ContactAttempt).filter_by(artist_id=artist_id).all()
         
+        # Safe datetime access
+        last_release_date = getattr(artist, 'last_release_date', None)
+        youtube_last_upload = getattr(artist, 'youtube_last_upload', None)
+        created_at = getattr(artist, 'created_at', None)
+        updated_at = getattr(artist, 'updated_at', None)
+        last_scraped = getattr(artist, 'last_scraped', None)
+        
         result = {
             'id': artist.id,
             'name': artist.name,
@@ -550,7 +570,7 @@ def get_artist(artist_id):
                 'monthly_listeners': artist.monthly_listeners,
                 'follower_count': artist.follower_count,
                 'release_count': artist.release_count,
-                'last_release_date': artist.last_release_date.isoformat() if artist.last_release_date else None
+                'last_release_date': last_release_date.isoformat() if last_release_date else None
             },
             # NEW: YouTube metrics
             'youtube_metrics': {
@@ -562,7 +582,7 @@ def get_artist(artist_id):
                 'upload_frequency': artist.youtube_upload_frequency,
                 'engagement_rate': artist.youtube_engagement_rate,
                 'growth_potential': artist.youtube_growth_potential,
-                'last_upload': artist.youtube_last_upload.isoformat() if artist.youtube_last_upload else None,
+                'last_upload': youtube_last_upload.isoformat() if youtube_last_upload else None,
                 'has_channel': bool(artist.youtube_channel_id)
             },
             'contact_info': {
@@ -576,7 +596,7 @@ def get_artist(artist_id):
                 'id': track.id,
                 'isrc': track.isrc,
                 'title': track.title,
-                'release_date': track.release_date.isoformat() if track.release_date else None,
+                'release_date': (lambda rd: rd.isoformat() if rd else None)(getattr(track, 'release_date', None)),
                 'label': track.label,
                 'spotify_popularity': track.spotify_popularity
             } for track in tracks],
@@ -588,9 +608,9 @@ def get_artist(artist_id):
                 'verified': contact.verified
             } for contact in contacts],
             'timestamps': {
-                'created_at': artist.created_at.isoformat(),
-                'updated_at': artist.updated_at.isoformat(),
-                'last_scraped': artist.last_scraped.isoformat() if artist.last_scraped else None
+                'created_at': created_at.isoformat() if created_at else None,
+                'updated_at': updated_at.isoformat() if updated_at else None,
+                'last_scraped': last_scraped.isoformat() if last_scraped else None
             }
         }
         
@@ -621,8 +641,9 @@ def update_outreach_status(artist_id):
         if not artist:
             return jsonify({'error': 'Artist not found'}), 404
         
-        artist.outreach_status = status
-        artist.updated_at = datetime.utcnow()
+        # Use setattr to safely set attributes
+        setattr(artist, 'outreach_status', status)
+        setattr(artist, 'updated_at', datetime.utcnow())
         
         # Log the outreach attempt if notes provided
         notes = data.get('notes')
@@ -734,7 +755,8 @@ def refresh_artist_youtube_data(artist_id):
         from src.integrations.youtube import youtube_client
         
         # Get fresh YouTube data
-        channel_data = youtube_client.search_artist_channel(artist.name)
+        artist_name = getattr(artist, 'name', 'Unknown Artist')
+        channel_data = youtube_client.search_artist_channel(artist_name)
         
         if not channel_data:
             return jsonify({

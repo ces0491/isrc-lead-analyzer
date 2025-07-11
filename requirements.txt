@@ -8,7 +8,7 @@ Werkzeug==2.3.7
 SQLAlchemy==2.0.21
 
 # Configuration and environment
-python-dotenv==1.0.0
+python-dotenv==1.0.0  # Fixed: Added python-dotenv
 
 # HTTP requests and API clients
 requests==2.31.0
