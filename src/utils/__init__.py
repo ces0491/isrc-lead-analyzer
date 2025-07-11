@@ -3,9 +3,9 @@ Utility modules for Precise Digital Lead Generation Tool
 """
 
 from .validators import validate_isrc
-from .startup_validation import validate_startup_configuration
+
+# Note: startup_validation is imported directly where needed to avoid circular imports
 
 __all__ = [
-    'validate_isrc',
-    'validate_startup_configuration'
+    'validate_isrc'
 ]
