@@ -1,5 +1,5 @@
 """
-Flask API routes for Precise Digital Lead Generation Tool
+Flask API routes for Precise Digital Lead Generation Tool with YouTube Integration
 Provides REST endpoints for the frontend application
 """
 import os
@@ -49,27 +49,37 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
-        'version': '1.0.0'
+        'version': '1.0.0',
+        'youtube_integration': 'enabled'
     })
 
 # System status endpoint
 @app.route('/api/status', methods=['GET'])
 def system_status():
-    """Get system status including API rate limits"""
+    """Get system status including API rate limits and YouTube integration"""
     rate_status = rate_limiter.get_rate_limit_status()
     processing_stats = pipeline.get_processing_stats()
+    
+    # Check YouTube API availability
+    youtube_status = 'available' if settings.apis['youtube'].api_key else 'not_configured'
     
     return jsonify({
         'rate_limits': rate_status,
         'processing_stats': processing_stats,
-        'database_status': 'connected',  # Could add actual DB health check
+        'database_status': 'connected',
+        'youtube_integration': {
+            'status': youtube_status,
+            'api_key_configured': bool(settings.apis['youtube'].api_key),
+            'daily_quota_used': rate_status.get('youtube', {}).get('requests_today', 0),
+            'daily_quota_limit': rate_status.get('youtube', {}).get('daily_limit', 10000)
+        },
         'timestamp': datetime.utcnow().isoformat()
     })
 
 # Single ISRC analysis
 @app.route('/api/analyze-isrc', methods=['POST'])
 def analyze_isrc():
-    """Analyze a single ISRC"""
+    """Analyze a single ISRC with YouTube integration"""
     try:
         data = request.get_json()
         
@@ -86,6 +96,7 @@ def analyze_isrc():
         # Check if already processed recently
         save_to_db = data.get('save_to_db', True)
         force_refresh = data.get('force_refresh', False)
+        include_youtube = data.get('include_youtube', True)  # NEW: YouTube toggle
         
         if not force_refresh and save_to_db:
             # Check if we have recent data for this ISRC
@@ -109,6 +120,13 @@ def analyze_isrc():
         # Process the ISRC
         result = pipeline.process_isrc(isrc, save_to_db=save_to_db)
         
+        # Add YouTube integration status to response
+        result['youtube_integration'] = {
+            'enabled': include_youtube,
+            'data_found': bool(result.get('youtube_data')),
+            'api_status': 'available' if settings.apis['youtube'].api_key else 'not_configured'
+        }
+        
         return jsonify(result)
         
     except Exception as e:
@@ -118,7 +136,7 @@ def analyze_isrc():
 # Bulk ISRC analysis
 @app.route('/api/analyze-bulk', methods=['POST'])
 def analyze_bulk():
-    """Analyze multiple ISRCs"""
+    """Analyze multiple ISRCs with YouTube integration"""
     try:
         data = request.get_json()
         
@@ -162,6 +180,23 @@ def analyze_bulk():
         # Process batch
         batch_size = data.get('batch_size', 10)
         result = pipeline.process_bulk(cleaned_isrcs, batch_size=batch_size)
+        
+        # Add YouTube statistics to bulk result
+        youtube_stats = {
+            'artists_with_youtube': 0,
+            'youtube_data_collected': 0,
+            'total_youtube_subscribers': 0
+        }
+        
+        for item in result.get('results', []):
+            if item.get('youtube_data'):
+                youtube_stats['youtube_data_collected'] += 1
+                if item['youtube_data'].get('channel'):
+                    youtube_stats['artists_with_youtube'] += 1
+                    subs = item['youtube_data']['channel'].get('statistics', {}).get('subscriber_count', 0)
+                    youtube_stats['total_youtube_subscribers'] += int(subs or 0)
+        
+        result['youtube_statistics'] = youtube_stats
         
         return jsonify(result)
         
@@ -241,16 +276,17 @@ def upload_isrcs():
         print(f"Error in upload_isrcs: {e}")
         return jsonify({'error': f'File processing failed: {str(e)}'}), 500
 
-# Get leads list with filtering
+# Get leads list with filtering including YouTube filters
 @app.route('/api/leads', methods=['GET'])
 def get_leads():
-    """Get filtered list of leads"""
+    """Get filtered list of leads with YouTube filtering options"""
     try:
         # Get query parameters
         tier = request.args.get('tier')
         region = request.args.get('region')
         min_score = request.args.get('min_score', type=int)
         max_score = request.args.get('max_score', type=int)
+        youtube_filter = request.args.get('youtube_filter')  # NEW: YouTube filtering
         limit = request.args.get('limit', 50, type=int)
         offset = request.args.get('offset', 0, type=int)
         sort_by = request.args.get('sort_by', 'total_score')
@@ -276,6 +312,23 @@ def get_leads():
         if max_score is not None:
             query = query.filter(Artist.total_score <= max_score)
         
+        # NEW: YouTube filtering
+        if youtube_filter:
+            if youtube_filter == 'has_channel':
+                query = query.filter(Artist.youtube_channel_id.isnot(None))
+            elif youtube_filter == 'no_channel':
+                query = query.filter(Artist.youtube_channel_id.is_(None))
+            elif youtube_filter == 'high_potential':
+                query = query.filter(Artist.youtube_growth_potential == 'high_potential')
+            elif youtube_filter == 'underperforming':
+                # Artists with Spotify following but low YouTube subscribers
+                query = query.filter(
+                    Artist.monthly_listeners > 10000,
+                    Artist.youtube_subscribers < Artist.monthly_listeners * 0.3
+                )
+            elif youtube_filter == 'active_uploaders':
+                query = query.filter(Artist.youtube_upload_frequency.in_(['very_active', 'active']))
+        
         # Apply sorting
         if sort_by == 'total_score':
             sort_column = Artist.total_score
@@ -283,6 +336,8 @@ def get_leads():
             sort_column = Artist.name
         elif sort_by == 'created_at':
             sort_column = Artist.created_at
+        elif sort_by == 'youtube_subscribers':  # NEW: YouTube sorting
+            sort_column = Artist.youtube_subscribers
         else:
             sort_column = Artist.total_score
         
@@ -297,10 +352,10 @@ def get_leads():
         # Apply pagination
         leads = query.offset(offset).limit(limit).all()
         
-        # Format results
+        # Format results including YouTube data
         results = []
         for artist in leads:
-            results.append({
+            result_item = {
                 'id': artist.id,
                 'name': artist.name,
                 'country': artist.country,
@@ -317,9 +372,21 @@ def get_leads():
                 'contact_email': artist.contact_email,
                 'website': artist.website,
                 'social_handles': artist.social_handles,
+                # NEW: YouTube summary data
+                'youtube_summary': {
+                    'has_channel': bool(artist.youtube_channel_id),
+                    'channel_url': artist.youtube_channel_url,
+                    'subscribers': artist.youtube_subscribers or 0,
+                    'total_views': artist.youtube_total_views or 0,
+                    'video_count': artist.youtube_video_count or 0,
+                    'upload_frequency': artist.youtube_upload_frequency,
+                    'growth_potential': artist.youtube_growth_potential,
+                    'engagement_rate': artist.youtube_engagement_rate or 0.0
+                },
                 'created_at': artist.created_at.isoformat(),
                 'updated_at': artist.updated_at.isoformat()
-            })
+            }
+            results.append(result_item)
         
         return jsonify({
             'leads': results,
@@ -334,6 +401,7 @@ def get_leads():
                 'region': region,
                 'min_score': min_score,
                 'max_score': max_score,
+                'youtube_filter': youtube_filter,
                 'sort_by': sort_by,
                 'sort_order': sort_order
             }
@@ -343,10 +411,10 @@ def get_leads():
         print(f"Error in get_leads: {e}")
         return jsonify({'error': f'Failed to fetch leads: {str(e)}'}), 500
 
-# Export leads to CSV
+# Export leads to CSV including YouTube data
 @app.route('/api/export', methods=['POST'])
 def export_leads():
-    """Export filtered leads to CSV"""
+    """Export filtered leads to CSV including YouTube data"""
     try:
         data = request.get_json() or {}
         filters = data.get('filters', {})
@@ -366,26 +434,39 @@ def export_leads():
         if filters.get('max_score'):
             query = query.filter(Artist.total_score <= filters['max_score'])
         
+        # NEW: YouTube filtering for export
+        if filters.get('youtube_filter'):
+            youtube_filter = filters['youtube_filter']
+            if youtube_filter == 'has_channel':
+                query = query.filter(Artist.youtube_channel_id.isnot(None))
+            elif youtube_filter == 'no_channel':
+                query = query.filter(Artist.youtube_channel_id.is_(None))
+            elif youtube_filter == 'high_potential':
+                query = query.filter(Artist.youtube_growth_potential == 'high_potential')
+        
         # Order by score
         leads = query.order_by(Artist.total_score.desc()).all()
         
         if not leads:
             return jsonify({'error': 'No leads found with current filters'}), 404
         
-        # Create CSV content
+        # Create CSV content with YouTube data
         output = io.StringIO()
         writer = csv.writer(output)
         
-        # Write header
+        # Write header including YouTube columns
         writer.writerow([
             'Artist Name', 'Country', 'Region', 'Genre', 'Total Score',
             'Independence Score', 'Opportunity Score', 'Geographic Score',
             'Lead Tier', 'Monthly Listeners', 'Last Release Date',
             'Outreach Status', 'Contact Email', 'Website', 'Social Handles',
+            'YouTube Channel ID', 'YouTube Channel URL', 'YouTube Subscribers', 
+            'YouTube Total Views', 'YouTube Video Count', 'YouTube Upload Frequency', 
+            'YouTube Growth Potential', 'YouTube Engagement Rate',
             'Created Date'
         ])
         
-        # Write data
+        # Write data including YouTube metrics
         for artist in leads:
             writer.writerow([
                 artist.name,
@@ -403,6 +484,15 @@ def export_leads():
                 artist.contact_email or '',
                 artist.website or '',
                 str(artist.social_handles) if artist.social_handles else '',
+                # NEW: YouTube data columns
+                artist.youtube_channel_id or '',
+                artist.youtube_channel_url or '',
+                artist.youtube_subscribers or 0,
+                artist.youtube_total_views or 0,
+                artist.youtube_video_count or 0,
+                artist.youtube_upload_frequency or '',
+                artist.youtube_growth_potential or '',
+                artist.youtube_engagement_rate or 0.0,
                 artist.created_at.strftime('%Y-%m-%d %H:%M:%S')
             ])
         
@@ -424,10 +514,10 @@ def export_leads():
         print(f"Error in export_leads: {e}")
         return jsonify({'error': f'Export failed: {str(e)}'}), 500
 
-# Get artist details
+# Get artist details including YouTube data
 @app.route('/api/artist/<int:artist_id>', methods=['GET'])
 def get_artist(artist_id):
-    """Get detailed information for a specific artist"""
+    """Get detailed information for a specific artist including YouTube data"""
     try:
         artist = db_manager.session.query(Artist).filter_by(id=artist_id).first()
         
@@ -461,6 +551,19 @@ def get_artist(artist_id):
                 'follower_count': artist.follower_count,
                 'release_count': artist.release_count,
                 'last_release_date': artist.last_release_date.isoformat() if artist.last_release_date else None
+            },
+            # NEW: YouTube metrics
+            'youtube_metrics': {
+                'channel_id': artist.youtube_channel_id,
+                'channel_url': artist.youtube_channel_url,
+                'subscribers': artist.youtube_subscribers,
+                'total_views': artist.youtube_total_views,
+                'video_count': artist.youtube_video_count,
+                'upload_frequency': artist.youtube_upload_frequency,
+                'engagement_rate': artist.youtube_engagement_rate,
+                'growth_potential': artist.youtube_growth_potential,
+                'last_upload': artist.youtube_last_upload.isoformat() if artist.youtube_last_upload else None,
+                'has_channel': bool(artist.youtube_channel_id)
             },
             'contact_info': {
                 'email': artist.contact_email,
@@ -547,10 +650,10 @@ def update_outreach_status(artist_id):
         print(f"Error in update_outreach_status: {e}")
         return jsonify({'error': f'Failed to update outreach status: {str(e)}'}), 500
 
-# Dashboard statistics
+# Dashboard statistics including YouTube metrics
 @app.route('/api/dashboard/stats', methods=['GET'])
 def dashboard_stats():
-    """Get dashboard statistics"""
+    """Get dashboard statistics including YouTube metrics"""
     try:
         stats = db_manager.get_dashboard_stats()
         stats['generated_at'] = datetime.utcnow().isoformat()
@@ -560,10 +663,155 @@ def dashboard_stats():
         print(f"Error in dashboard_stats: {e}")
         return jsonify({'error': f'Failed to fetch dashboard stats: {str(e)}'}), 500
 
+# NEW: YouTube-specific endpoints
+
+@app.route('/api/youtube/test', methods=['POST'])
+def test_youtube_integration():
+    """Test YouTube API integration for a specific artist"""
+    try:
+        data = request.get_json()
+        artist_name = data.get('artist_name')
+        
+        if not artist_name:
+            return jsonify({'error': 'Artist name required'}), 400
+        
+        from src.integrations.youtube import youtube_client
+        
+        # Test channel search
+        channel_data = youtube_client.search_artist_channel(artist_name)
+        
+        if not channel_data:
+            return jsonify({
+                'status': 'not_found',
+                'message': f'No YouTube channel found for "{artist_name}"',
+                'artist_name': artist_name
+            })
+        
+        # Get additional analytics if channel found
+        analytics = youtube_client.get_channel_analytics(channel_data['channel_id'])
+        videos = youtube_client.search_artist_videos(artist_name, max_results=5)
+        
+        return jsonify({
+            'status': 'success',
+            'artist_name': artist_name,
+            'channel_data': channel_data,
+            'analytics': analytics,
+            'recent_videos': videos,
+            'integration_status': 'YouTube API working correctly'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'message': 'YouTube API integration test failed'
+        }), 500
+
+@app.route('/api/youtube/opportunities', methods=['GET'])
+def get_youtube_opportunities():
+    """Get artists with YouTube opportunities for targeted outreach"""
+    try:
+        limit = request.args.get('limit', 20, type=int)
+        opportunities = db_manager.get_youtube_opportunities(limit=limit)
+        
+        return jsonify({
+            'youtube_opportunities': opportunities,
+            'generated_at': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"Error in get_youtube_opportunities: {e}")
+        return jsonify({'error': f'Failed to fetch YouTube opportunities: {str(e)}'}), 500
+
+@app.route('/api/artist/<int:artist_id>/youtube/refresh', methods=['POST'])
+def refresh_artist_youtube_data(artist_id):
+    """Refresh YouTube data for a specific artist"""
+    try:
+        artist = db_manager.session.query(Artist).filter_by(id=artist_id).first()
+        if not artist:
+            return jsonify({'error': 'Artist not found'}), 404
+        
+        from src.integrations.youtube import youtube_client
+        
+        # Get fresh YouTube data
+        channel_data = youtube_client.search_artist_channel(artist.name)
+        
+        if not channel_data:
+            return jsonify({
+                'status': 'no_channel_found',
+                'message': f'No YouTube channel found for "{artist.name}"'
+            })
+        
+        # Prepare YouTube data for database update
+        youtube_update_data = {
+            'channel_id': channel_data.get('channel_id'),
+            'channel_url': f"https://youtube.com/channel/{channel_data.get('channel_id')}",
+            'subscribers': channel_data.get('statistics', {}).get('subscriber_count', 0),
+            'total_views': channel_data.get('statistics', {}).get('view_count', 0),
+            'video_count': channel_data.get('statistics', {}).get('video_count', 0)
+        }
+        
+        # Get analytics if available
+        if channel_data.get('channel_id'):
+            analytics = youtube_client.get_channel_analytics(channel_data['channel_id'])
+            if analytics:
+                youtube_update_data.update({
+                    'upload_frequency': analytics.get('recent_activity', {}).get('upload_frequency'),
+                    'growth_potential': analytics.get('growth_potential'),
+                    'engagement_rate': analytics.get('engagement_indicators', {}).get('subscriber_to_view_ratio', 0)
+                })
+        
+        # Update database
+        success = db_manager.update_youtube_data(artist_id, youtube_update_data)
+        
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': 'YouTube data refreshed successfully',
+                'updated_data': youtube_update_data
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to update YouTube data in database'
+            }), 500
+            
+    except Exception as e:
+        print(f"Error in refresh_artist_youtube_data: {e}")
+        return jsonify({'error': f'Failed to refresh YouTube data: {str(e)}'}), 500
+
+@app.route('/api/youtube/stats', methods=['GET'])
+def get_youtube_stats():
+    """Get overall YouTube integration statistics"""
+    try:
+        stats = db_manager.get_dashboard_stats()
+        youtube_stats = stats.get('youtube_statistics', {})
+        
+        # Calculate additional YouTube metrics
+        total_artists = stats.get('total_artists', 0)
+        artists_with_youtube = youtube_stats.get('artists_with_youtube', 0)
+        coverage_percentage = (artists_with_youtube / max(total_artists, 1)) * 100
+        
+        return jsonify({
+            'total_artists': total_artists,
+            'artists_with_youtube_channels': artists_with_youtube,
+            'youtube_coverage_percentage': round(coverage_percentage, 1),
+            'total_youtube_subscribers': youtube_stats.get('total_youtube_subscribers', 0),
+            'average_youtube_subscribers': round(youtube_stats.get('avg_youtube_subscribers', 0)),
+            'high_potential_channels': youtube_stats.get('high_potential_channels', 0),
+            'api_status': 'available' if settings.apis['youtube'].api_key else 'not_configured',
+            'generated_at': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"Error in get_youtube_stats: {e}")
+        return jsonify({'error': f'Failed to fetch YouTube stats: {str(e)}'}), 500
+
 if __name__ == '__main__':
     # Initialize database
-    from config.database import init_db
+    from config.database import init_db, run_youtube_migration_if_needed
     init_db()
+    run_youtube_migration_if_needed()
     
     # Run the app
     app.run(

@@ -1,5 +1,5 @@
 """
-Main processing pipeline for lead generation
+Main processing pipeline for lead generation with YouTube integration
 Orchestrates API calls, data aggregation, and scoring
 """
 import asyncio
@@ -9,14 +9,14 @@ import traceback
 
 from src.core.rate_limiter import RateLimitManager
 from src.core.scoring import LeadScoringEngine
-from src.integrations.base_client import musicbrainz_client, spotify_client, lastfm_client
-from src.models.database import DatabaseManager
+from src.integrations.base_client import musicbrainz_client, spotify_client, lastfm_client, youtube_client
+from config.database import DatabaseManager
 from src.utils.validators import validate_isrc
 from config.settings import settings
 
 class LeadAggregationPipeline:
     """
-    Main pipeline for processing ISRCs and generating lead data
+    Main pipeline for processing ISRCs and generating lead data with YouTube integration
     Coordinates all data sources and processing steps
     """
     
@@ -36,7 +36,7 @@ class LeadAggregationPipeline:
     
     def process_isrc(self, isrc: str, save_to_db: bool = True) -> Dict:
         """
-        Main processing function for a single ISRC with proper error handling
+        Main processing function for a single ISRC with full YouTube integration
         Returns comprehensive artist and track data with scoring
         """
         # Validate ISRC first
@@ -65,6 +65,7 @@ class LeadAggregationPipeline:
             'musicbrainz_data': {},
             'spotify_data': {},
             'lastfm_data': {},
+            'youtube_data': {},  # NEW: YouTube data
             'contacts': [],
             'scores': {},
             'errors': [],
@@ -113,32 +114,43 @@ class LeadAggregationPipeline:
                 result['lastfm_data'] = lastfm_data
                 result['data_sources_used'].append('lastfm')
             
-            # Step 4: Aggregate and normalize data
-            print("  4. Aggregating data...")
+            # Step 4: Get YouTube data (NEW)
+            print("  4. Fetching YouTube data...")
+            youtube_data = self._get_youtube_data(artist_name)
+            if youtube_data:
+                result['youtube_data'] = youtube_data
+                result['data_sources_used'].append('youtube')
+            
+            # Step 5: Aggregate and normalize data
+            print("  5. Aggregating data...")
             aggregated_data = self._aggregate_data(result)
             result['artist_data'] = aggregated_data['artist']
             result['track_data'] = aggregated_data['track']
             
-            # Step 5: Calculate lead scores
-            print("  5. Calculating scores...")
+            # Step 6: Calculate lead scores
+            print("  6. Calculating scores...")
             scores = self.scoring_engine.calculate_scores({
                 'track_data': result['track_data'],
                 'spotify_data': result['spotify_data'],
                 'lastfm_data': result['lastfm_data'],
-                'musicbrainz_data': result['musicbrainz_data']
+                'musicbrainz_data': result['musicbrainz_data'],
+                'youtube_data': result['youtube_data']  # NEW: Include YouTube data
             })
             result['scores'] = scores
             
-            # Step 6: Discover contact information
-            print("  6. Discovering contacts...")
+            # Step 7: Discover contact information
+            print("  7. Discovering contacts...")
             contacts = self._discover_contacts(result)
             result['contacts'] = contacts
             
-            # Step 7: Save to database if requested
+            # Step 8: Save to database if requested
             if save_to_db:
-                print("  7. Saving to database...")
+                print("  8. Saving to database...")
                 try:
                     with self.db_manager as db:
+                        # Prepare YouTube data for database
+                        youtube_data_for_db = self._prepare_youtube_data_for_db(result.get('youtube_data', {}))
+                        
                         artist_id = db.save_artist_data({
                             'name': artist_name,
                             'musicbrainz_id': mb_data.get('artist', {}).get('musicbrainz_artist_id'),
@@ -149,7 +161,8 @@ class LeadAggregationPipeline:
                             'monthly_listeners': spotify_data.get('followers', 0) if spotify_data else 0,
                             'scores': scores,
                             'track_data': result['track_data'],
-                            'contacts': contacts
+                            'contacts': contacts,
+                            **youtube_data_for_db  # NEW: Include YouTube data
                         })
                         result['artist_id'] = artist_id
                 except Exception as e:
@@ -287,14 +300,84 @@ class LeadAggregationPipeline:
             print(f"Last.fm API error: {str(e)}")
             return None
     
+    def _get_youtube_data(self, artist_name: str) -> Optional[Dict]:
+        """Get comprehensive YouTube data for artist - NEW METHOD"""
+        try:
+            result = {}
+            
+            # Search for artist's main channel
+            channel_data = youtube_client.search_artist_channel(artist_name)
+            if channel_data:
+                result['channel'] = channel_data
+                
+                # Get detailed analytics for the channel
+                channel_analytics = youtube_client.get_channel_analytics(channel_data['channel_id'])
+                if channel_analytics:
+                    result['analytics'] = channel_analytics
+            
+            # Search for artist's music videos
+            videos = youtube_client.search_artist_videos(artist_name, max_results=10)
+            if videos:
+                result['videos'] = videos
+                
+                # Calculate video performance metrics
+                result['video_metrics'] = self._calculate_video_metrics(videos)
+            
+            return result if result else None
+            
+        except Exception as e:
+            print(f"YouTube API error: {str(e)}")
+            return None
+    
+    def _calculate_video_metrics(self, videos: List[Dict]) -> Dict:
+        """Calculate aggregated video performance metrics - NEW METHOD"""
+        if not videos:
+            return {}
+        
+        total_views = sum(v.get('statistics', {}).get('view_count', 0) for v in videos)
+        total_likes = sum(v.get('statistics', {}).get('like_count', 0) for v in videos)
+        total_comments = sum(v.get('statistics', {}).get('comment_count', 0) for v in videos)
+        
+        return {
+            'total_videos': len(videos),
+            'total_views': total_views,
+            'total_likes': total_likes,
+            'total_comments': total_comments,
+            'average_views': total_views // max(len(videos), 1),
+            'average_likes': total_likes // max(len(videos), 1),
+            'engagement_rate': (total_likes + total_comments) / max(total_views, 1) * 100 if total_views > 0 else 0
+        }
+    
+    def _prepare_youtube_data_for_db(self, youtube_data: Dict) -> Dict:
+        """Prepare YouTube data for database storage - NEW METHOD"""
+        if not youtube_data:
+            return {}
+        
+        channel = youtube_data.get('channel', {})
+        analytics = youtube_data.get('analytics', {})
+        video_metrics = youtube_data.get('video_metrics', {})
+        
+        return {
+            'youtube_channel_id': channel.get('channel_id'),
+            'youtube_channel_url': f"https://youtube.com/channel/{channel.get('channel_id')}" if channel.get('channel_id') else None,
+            'youtube_subscribers': self._safe_int(channel.get('statistics', {}).get('subscriber_count', 0)),
+            'youtube_total_views': self._safe_int(channel.get('statistics', {}).get('view_count', 0)),
+            'youtube_video_count': self._safe_int(channel.get('statistics', {}).get('video_count', 0)),
+            'youtube_upload_frequency': analytics.get('recent_activity', {}).get('upload_frequency', 'unknown'),
+            'youtube_engagement_rate': video_metrics.get('engagement_rate', 0.0),
+            'youtube_growth_potential': analytics.get('growth_potential', 'unknown'),
+            'youtube_last_upload': self._parse_datetime(analytics.get('recent_activity', {}).get('last_upload_date'))
+        }
+    
     def _aggregate_data(self, result: Dict) -> Dict:
         """
-        Aggregate and normalize data from all sources
+        Aggregate and normalize data from all sources including YouTube
         Creates unified artist and track objects
         """
         mb_data = result.get('musicbrainz_data', {})
         spotify_data = result.get('spotify_data', {})
         lastfm_data = result.get('lastfm_data', {})
+        youtube_data = result.get('youtube_data', {})  # NEW
         
         # Safely extract nested data
         mb_artist = mb_data.get('artist', {})
@@ -326,6 +409,22 @@ class LeadAggregationPipeline:
             'social_urls': mb_artist.get('urls', {}),
             'website': mb_artist.get('urls', {}).get('website') or ""
         }
+        
+        # NEW: Add YouTube metrics to artist data
+        if youtube_data:
+            youtube_channel = youtube_data.get('channel', {})
+            youtube_analytics = youtube_data.get('analytics', {})
+            youtube_metrics = youtube_data.get('video_metrics', {})
+            
+            artist_data.update({
+                'youtube_channel_id': youtube_channel.get('channel_id'),
+                'youtube_subscribers': self._safe_int(youtube_channel.get('statistics', {}).get('subscriber_count', 0)),
+                'youtube_total_views': self._safe_int(youtube_channel.get('statistics', {}).get('view_count', 0)),
+                'youtube_video_count': self._safe_int(youtube_channel.get('statistics', {}).get('video_count', 0)),
+                'youtube_upload_frequency': youtube_analytics.get('recent_activity', {}).get('upload_frequency', 'unknown'),
+                'youtube_engagement_rate': youtube_metrics.get('engagement_rate', 0),
+                'youtube_growth_potential': youtube_analytics.get('growth_potential', 'unknown')
+            })
         
         # Aggregate track data
         track_data = {
@@ -361,7 +460,7 @@ class LeadAggregationPipeline:
     
     def _discover_contacts(self, result: Dict) -> List[Dict]:
         """
-        Discover contact information from various sources
+        Discover contact information from various sources including YouTube
         Returns list of potential contact methods with confidence scores
         """
         contacts = []
@@ -394,6 +493,22 @@ class LeadAggregationPipeline:
                 'value': f"https://open.spotify.com/artist/{spotify_id}",
                 'source': 'spotify_api',
                 'confidence': 95
+            })
+        
+        # NEW: Add YouTube channel as contact method
+        youtube_data = result.get('youtube_data', {})
+        if youtube_data and youtube_data.get('channel'):
+            channel = youtube_data['channel']
+            channel_url = f"https://youtube.com/channel/{channel['channel_id']}"
+            subscriber_count = channel.get('statistics', {}).get('subscriber_count', 0)
+            
+            contacts.append({
+                'type': 'platform_profile',
+                'platform': 'youtube',
+                'value': channel_url,
+                'source': 'youtube_api',
+                'confidence': 90,
+                'note': f"YouTube channel with {subscriber_count:,} subscribers"
             })
         
         return contacts
@@ -480,6 +595,21 @@ class LeadAggregationPipeline:
         except:
             return None
     
+    def _parse_datetime(self, date_str) -> Optional[datetime]:
+        """Parse datetime string safely"""
+        if not date_str:
+            return None
+        try:
+            formats = ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%Y-%m', '%Y']
+            for fmt in formats:
+                try:
+                    return datetime.strptime(str(date_str), fmt)
+                except ValueError:
+                    continue
+        except Exception:
+            pass
+        return None
+    
     def _extract_primary_genre(self, result: Dict) -> str:
         """Extract the primary genre from aggregated data"""
         # Try Spotify first (usually most accurate)
@@ -515,6 +645,10 @@ class LeadAggregationPipeline:
         if result.get('musicbrainz_data'):
             platforms.extend(['apple_music', 'amazon_music'])
         
+        # NEW: If we found YouTube videos, add YouTube Music
+        if result.get('youtube_data', {}).get('videos'):
+            platforms.append('youtube_music')
+        
         return list(set(platforms))  # Remove duplicates
     
     def get_processing_stats(self) -> Dict:
@@ -532,7 +666,7 @@ class LeadAggregationPipeline:
 
 # Utility functions for testing
 def test_pipeline():
-    """Test the pipeline with sample ISRCs"""
+    """Test the pipeline with sample ISRCs including YouTube integration"""
     from src.core.rate_limiter import RateLimitManager
     
     # Sample test ISRCs - replace with real ones for testing
@@ -559,6 +693,14 @@ def test_pipeline():
             print(f"Opportunity: {scores['opportunity_score']}")
             print(f"Geographic: {scores['geographic_score']}")
             print(f"Data Sources: {', '.join(result['data_sources_used'])}")
+            
+            # NEW: Show YouTube data if available
+            if 'youtube' in result['data_sources_used']:
+                youtube_data = result.get('youtube_data', {})
+                if youtube_data.get('channel'):
+                    channel = youtube_data['channel']
+                    print(f"YouTube Channel: {channel.get('title', 'N/A')}")
+                    print(f"Subscribers: {channel.get('statistics', {}).get('subscriber_count', 'N/A'):,}")
         else:
             print(f"Errors: {result['errors']}")
 

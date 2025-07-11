@@ -1,5 +1,5 @@
 """
-Lead Scoring Engine for Precise Digital
+Lead Scoring Engine for Precise Digital with YouTube Integration
 Evaluates artists based on independence, opportunity, and geographic factors
 """
 from datetime import datetime, timedelta
@@ -9,10 +9,10 @@ from config.settings import settings
 
 class LeadScoringEngine:
     """
-    Main scoring engine that evaluates potential leads
+    Main scoring engine that evaluates potential leads with YouTube integration
     Scoring is based on three main factors:
     1. Independence Score (40% weight) - How independent the artist is
-    2. Opportunity Score (40% weight) - Gaps in services and growth potential  
+    2. Opportunity Score (40% weight) - Gaps in services and growth potential including YouTube
     3. Geographic Score (20% weight) - Priority based on location
     """
     
@@ -35,7 +35,7 @@ class LeadScoringEngine:
     
     def calculate_scores(self, artist_data: Dict) -> Dict:
         """
-        Main scoring function that combines all factors
+        Main scoring function that combines all factors including YouTube
         Returns comprehensive scoring breakdown
         """
         # Extract data components with safe defaults
@@ -43,6 +43,7 @@ class LeadScoringEngine:
         spotify_data = artist_data.get('spotify_data', {})
         lastfm_data = artist_data.get('lastfm_data', {})
         musicbrainz_data = artist_data.get('musicbrainz_data', {})
+        youtube_data = artist_data.get('youtube_data', {})  # NEW
         
         # Calculate individual scores
         independence_score = self._calculate_independence_score(
@@ -50,7 +51,7 @@ class LeadScoringEngine:
         )
         
         opportunity_score = self._calculate_opportunity_score(
-            track_data, spotify_data, lastfm_data, artist_data
+            track_data, spotify_data, lastfm_data, youtube_data, artist_data  # NEW: Include YouTube
         )
         
         geographic_score = self._calculate_geographic_score(
@@ -145,9 +146,9 @@ class LeadScoringEngine:
         return min(score, 100)
     
     def _calculate_opportunity_score(self, track_data: Dict, spotify_data: Dict, 
-                                   lastfm_data: Dict, artist_data: Dict) -> int:
+                                   lastfm_data: Dict, youtube_data: Dict, artist_data: Dict) -> int:
         """
-        Score based on service gaps and growth potential
+        Score based on service gaps and growth potential including YouTube metrics
         Higher scores indicate more opportunities for Precise Digital services
         """
         score = 0
@@ -202,7 +203,50 @@ class LeadScoringEngine:
         if missing_professional_elements >= 3:
             score += self.weights['opportunity']['low_professional_presence']
         
+        # NEW: 7. YouTube opportunity indicators (15 points max)
+        youtube_opportunities = self._assess_youtube_opportunities(youtube_data, spotify_data)
+        score += youtube_opportunities
+        
         return min(score, 100)
+    
+    def _assess_youtube_opportunities(self, youtube_data: Dict, spotify_data: Dict) -> int:
+        """
+        NEW: Assess YouTube-specific opportunities for growth and monetization
+        Returns up to 15 points for various YouTube opportunity indicators
+        """
+        if not youtube_data:
+            # No YouTube presence = major opportunity
+            return 15
+        
+        score = 0
+        channel = youtube_data.get('channel', {})
+        analytics = youtube_data.get('analytics', {})
+        video_metrics = youtube_data.get('video_metrics', {})
+        
+        # Channel size vs Spotify following analysis
+        youtube_subs = self._safe_int(channel.get('statistics', {}).get('subscriber_count', 0))
+        spotify_followers = self._safe_int(spotify_data.get('followers', 0))
+        
+        # 1. YouTube underperformance relative to Spotify (5 points)
+        if spotify_followers > 10000 and youtube_subs < spotify_followers * 0.3:
+            score += 5  # YouTube channel significantly underperforming
+        
+        # 2. Low upload frequency but good following (5 points)
+        upload_frequency = analytics.get('recent_activity', {}).get('upload_frequency', 'inactive')
+        if youtube_subs > 1000 and upload_frequency in ['low', 'inactive']:
+            score += 5  # Good audience but not leveraging YouTube effectively
+        
+        # 3. Poor video optimization (3 points)
+        avg_views = video_metrics.get('average_views', 0)
+        if youtube_subs > 0 and avg_views < youtube_subs * 0.1:
+            score += 3  # Videos not reaching subscriber base effectively
+        
+        # 4. High growth potential but small size (2 points)
+        growth_potential = analytics.get('growth_potential', 'low_potential')
+        if growth_potential == 'high_potential' and youtube_subs < 10000:
+            score += 2  # Emerging channel with high potential
+        
+        return score
     
     def _calculate_geographic_score(self, mb_data: Dict, artist_data: Dict) -> int:
         """
@@ -291,7 +335,7 @@ class LeadScoringEngine:
     
     def _calculate_confidence(self, artist_data: Dict) -> int:
         """
-        Calculate confidence score based on data completeness
+        Calculate confidence score based on data completeness including YouTube
         Higher confidence = more complete data for scoring
         """
         confidence_factors = [
@@ -301,7 +345,8 @@ class LeadScoringEngine:
             bool(artist_data.get('track_data', {}).get('release_date')),
             bool(artist_data.get('spotify_data', {}).get('followers')),
             bool(artist_data.get('musicbrainz_data', {}).get('artist', {}).get('country')),
-            bool(artist_data.get('lastfm_data'))
+            bool(artist_data.get('lastfm_data')),
+            bool(artist_data.get('youtube_data'))  # NEW: YouTube data factor
         ]
         
         confidence = (sum(confidence_factors) / len(confidence_factors)) * 100
@@ -348,10 +393,11 @@ class LeadScoringEngine:
         return factors
     
     def _get_opportunity_factors(self, artist_data: Dict) -> List[str]:
-        """Get human-readable factors that influenced opportunity score"""
+        """Get human-readable factors that influenced opportunity score including YouTube"""
         factors = []
         track_data = artist_data.get('track_data', {})
         spotify_data = artist_data.get('spotify_data', {})
+        youtube_data = artist_data.get('youtube_data', {})  # NEW
         
         # Platform availability
         platforms = track_data.get('platforms_available', [])
@@ -369,6 +415,27 @@ class LeadScoringEngine:
         last_release = self._get_most_recent_release_date(track_data, spotify_data)
         if last_release and self._is_recent_release(last_release):
             factors.append("Recently active (released within 12 months)")
+        
+        # NEW: YouTube opportunity factors
+        if not youtube_data:
+            factors.append("No YouTube presence detected - major opportunity")
+        else:
+            channel = youtube_data.get('channel', {})
+            analytics = youtube_data.get('analytics', {})
+            
+            youtube_subs = self._safe_int(channel.get('statistics', {}).get('subscriber_count', 0))
+            spotify_followers = self._safe_int(spotify_data.get('followers', 0))
+            
+            if spotify_followers > 10000 and youtube_subs < spotify_followers * 0.3:
+                factors.append(f"YouTube underperforming vs Spotify ({youtube_subs:,} vs {spotify_followers:,})")
+            
+            upload_frequency = analytics.get('recent_activity', {}).get('upload_frequency', 'inactive')
+            if youtube_subs > 1000 and upload_frequency in ['low', 'inactive']:
+                factors.append(f"Inconsistent YouTube uploads despite {youtube_subs:,} subscribers")
+            
+            growth_potential = analytics.get('growth_potential', 'low_potential')
+            if growth_potential == 'high_potential':
+                factors.append("High YouTube growth potential identified")
         
         return factors
     
@@ -416,7 +483,7 @@ class LeadScoringEngine:
 # Utility functions for testing and validation
 def score_artist_from_isrc(isrc: str) -> Dict:
     """
-    Complete scoring pipeline for a single ISRC
+    Complete scoring pipeline for a single ISRC with YouTube integration
     Useful for testing and standalone scoring
     """
     from src.core.pipeline import LeadAggregationPipeline
@@ -440,7 +507,7 @@ def score_artist_from_isrc(isrc: str) -> Dict:
 
 def bulk_score_validation(test_isrcs: List[str]) -> Dict:
     """
-    Validate scoring algorithm with multiple test cases
+    Validate scoring algorithm with multiple test cases including YouTube
     Returns summary statistics and outliers
     """
     results = []
@@ -459,19 +526,83 @@ def bulk_score_validation(test_isrcs: List[str]) -> Dict:
     # Calculate summary stats
     scores = [r['scores']['total_score'] for r in results]
     tiers = [r['scores']['tier'] for r in results]
+    youtube_present = [bool(r['artist_data'].get('youtube_data')) for r in results]
     
     summary = {
         'total_processed': len(results),
         'average_score': sum(scores) / len(scores),
         'score_range': (min(scores), max(scores)),
         'tier_distribution': {tier: tiers.count(tier) for tier in 'ABCD'},
+        'youtube_coverage': sum(youtube_present) / len(youtube_present) * 100,
         'results': results
     }
     
     return summary
 
+def test_youtube_scoring():
+    """Test YouTube scoring specifically"""
+    scoring_engine = LeadScoringEngine()
+    
+    # Test scenarios
+    scenarios = [
+        {
+            'name': 'No YouTube Presence',
+            'data': {
+                'track_data': {'label': 'Self-Released'},
+                'spotify_data': {'followers': 25000, 'popularity': 40},
+                'musicbrainz_data': {'artist': {'country': 'NZ'}},
+                'youtube_data': {}
+            }
+        },
+        {
+            'name': 'YouTube Underperforming',
+            'data': {
+                'track_data': {'label': 'Self-Released'},
+                'spotify_data': {'followers': 50000, 'popularity': 45},
+                'musicbrainz_data': {'artist': {'country': 'NZ'}},
+                'youtube_data': {
+                    'channel': {'statistics': {'subscriber_count': 5000}},  # Much lower than Spotify
+                    'analytics': {'recent_activity': {'upload_frequency': 'low'}}
+                }
+            }
+        },
+        {
+            'name': 'Well-Optimized YouTube',
+            'data': {
+                'track_data': {'label': 'Self-Released'},
+                'spotify_data': {'followers': 30000, 'popularity': 40},
+                'musicbrainz_data': {'artist': {'country': 'NZ'}},
+                'youtube_data': {
+                    'channel': {'statistics': {'subscriber_count': 25000}},
+                    'analytics': {
+                        'recent_activity': {'upload_frequency': 'active'},
+                        'growth_potential': 'moderate_potential'
+                    },
+                    'video_metrics': {'average_views': 10000}
+                }
+            }
+        }
+    ]
+    
+    print("🎥 YouTube Scoring Test Results")
+    print("=" * 50)
+    
+    for scenario in scenarios:
+        scores = scoring_engine.calculate_scores(scenario['data'])
+        
+        print(f"\n📊 {scenario['name']}:")
+        print(f"   Total Score: {scores['total_score']} (Tier {scores['tier']})")
+        print(f"   Opportunity: {scores['opportunity_score']} (includes YouTube assessment)")
+        print(f"   Confidence: {scores['confidence']}%")
+        
+        # Show YouTube-specific factors
+        opportunity_factors = scores['scoring_breakdown']['opportunity']['factors']
+        youtube_factors = [f for f in opportunity_factors if 'youtube' in f.lower()]
+        if youtube_factors:
+            print(f"   YouTube Factors: {', '.join(youtube_factors)}")
+
 if __name__ == "__main__":
-    # Test the scoring engine with sample data
+    # Test the scoring engine with sample data including YouTube
     sample_data = {
         'track_data': {
             'isrc': 'TEST123456789',
@@ -492,15 +623,29 @@ if __name__ == "__main__":
                 'name': 'Test Artist',
                 'country': 'NZ'
             }
+        },
+        'youtube_data': {
+            'channel': {
+                'channel_id': 'test123',
+                'title': 'Test Artist',
+                'statistics': {'subscriber_count': 5000}
+            },
+            'analytics': {
+                'recent_activity': {'upload_frequency': 'low'},
+                'growth_potential': 'high_potential'
+            }
         }
     }
     
     engine = LeadScoringEngine()
     scores = engine.calculate_scores(sample_data)
     
-    print("Sample Scoring Result:")
+    print("Sample Scoring Result with YouTube:")
     print(f"Total Score: {scores['total_score']} (Tier {scores['tier']})")
     print(f"Independence: {scores['independence_score']}")
-    print(f"Opportunity: {scores['opportunity_score']}")
+    print(f"Opportunity: {scores['opportunity_score']} (includes YouTube)")
     print(f"Geographic: {scores['geographic_score']}")
     print(f"Confidence: {scores['confidence']}%")
+    
+    # Run YouTube-specific tests
+    test_youtube_scoring()
