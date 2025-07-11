@@ -12,11 +12,9 @@ from werkzeug.utils import secure_filename
 
 from src.core.pipeline import LeadAggregationPipeline
 from src.core.rate_limiter import RateLimitManager
-rate_limiter = RateLimitManager()
-
-from src.models.database import DatabaseManager, get_db, Artist, Track
-from config.settings import settings
 from src.utils.validators import validate_isrc
+from config.database import DatabaseManager, get_db, Artist, Track
+from config.settings import settings
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -27,6 +25,7 @@ app.config['SECRET_KEY'] = settings.app.secret_key
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Initialize services
+rate_limiter = RateLimitManager()
 pipeline = LeadAggregationPipeline(rate_limiter)
 db_manager = DatabaseManager()
 
@@ -77,15 +76,12 @@ def analyze_isrc():
         if not data or 'isrc' not in data:
             return jsonify({'error': 'ISRC required in request body'}), 400
         
+        # Use proper validation
         is_valid, result = validate_isrc(data['isrc'])
         if not is_valid:
             return jsonify({'error': result}), 400
         
         isrc = result  # Use cleaned ISRC
-        
-        # Validate ISRC format (basic validation)
-        if len(isrc) != 12 or not isrc.isalnum():
-            return jsonify({'error': 'Invalid ISRC format. Should be 12 alphanumeric characters.'}), 400
         
         # Check if already processed recently
         save_to_db = data.get('save_to_db', True)
@@ -93,18 +89,22 @@ def analyze_isrc():
         
         if not force_refresh and save_to_db:
             # Check if we have recent data for this ISRC
-            existing_track = db_manager.session.query(Track).filter_by(isrc=isrc).first()
-            if existing_track and existing_track.updated_at:
-                # Return cached data if processed within last 24 hours
-                time_diff = datetime.utcnow() - existing_track.updated_at
-                if time_diff.total_seconds() < 86400:  # 24 hours
-                    return jsonify({
-                        'isrc': isrc,
-                        'status': 'cached',
-                        'message': 'Returning cached data. Use force_refresh=true to reprocess.',
-                        'artist_id': existing_track.artist_id,
-                        'last_updated': existing_track.updated_at.isoformat()
-                    })
+            try:
+                existing_track = db_manager.session.query(Track).filter_by(isrc=isrc).first()
+                if existing_track and existing_track.updated_at:
+                    # Return cached data if processed within last 24 hours
+                    time_diff = datetime.utcnow() - existing_track.updated_at
+                    if time_diff.total_seconds() < 86400:  # 24 hours
+                        return jsonify({
+                            'isrc': isrc,
+                            'status': 'cached',
+                            'message': 'Returning cached data. Use force_refresh=true to reprocess.',
+                            'artist_id': existing_track.artist_id,
+                            'last_updated': existing_track.updated_at.isoformat()
+                        })
+            except Exception as e:
+                # If cache check fails, continue with processing
+                print(f"Cache check failed: {e}")
         
         # Process the ISRC
         result = pipeline.process_isrc(isrc, save_to_db=save_to_db)
@@ -112,6 +112,7 @@ def analyze_isrc():
         return jsonify(result)
         
     except Exception as e:
+        print(f"Error in analyze_isrc: {e}")
         return jsonify({'error': f'Processing failed: {str(e)}'}), 500
 
 # Bulk ISRC analysis
@@ -144,9 +145,9 @@ def analyze_bulk():
         
         for isrc in isrcs:
             if isinstance(isrc, str):
-                cleaned = isrc.strip().upper()
-                if len(cleaned) == 12 and cleaned.isalnum():
-                    cleaned_isrcs.append(cleaned)
+                is_valid, result = validate_isrc(isrc)
+                if is_valid:
+                    cleaned_isrcs.append(result)
                 else:
                     invalid_isrcs.append(isrc)
             else:
@@ -165,6 +166,7 @@ def analyze_bulk():
         return jsonify(result)
         
     except Exception as e:
+        print(f"Error in analyze_bulk: {e}")
         return jsonify({'error': f'Bulk processing failed: {str(e)}'}), 500
 
 # File upload for bulk processing
@@ -200,16 +202,16 @@ def upload_isrcs():
                     continue
                 
                 for cell in row:
-                    cell = cell.strip().upper()
-                    if len(cell) == 12 and cell.isalnum():
-                        isrcs.append(cell)
+                    is_valid, result = validate_isrc(cell)
+                    if is_valid:
+                        isrcs.append(result)
                         break  # Take first valid ISRC from row
         else:
             # Parse TXT (one ISRC per line)
             for line in file_content.split('\n'):
-                line = line.strip().upper()
-                if len(line) == 12 and line.isalnum():
-                    isrcs.append(line)
+                is_valid, result = validate_isrc(line.strip())
+                if is_valid:
+                    isrcs.append(result)
         
         # Remove duplicates while preserving order
         unique_isrcs = []
@@ -236,6 +238,7 @@ def upload_isrcs():
         })
         
     except Exception as e:
+        print(f"Error in upload_isrcs: {e}")
         return jsonify({'error': f'File processing failed: {str(e)}'}), 500
 
 # Get leads list with filtering
@@ -337,6 +340,7 @@ def get_leads():
         })
         
     except Exception as e:
+        print(f"Error in get_leads: {e}")
         return jsonify({'error': f'Failed to fetch leads: {str(e)}'}), 500
 
 # Export leads to CSV
@@ -417,6 +421,7 @@ def export_leads():
         })
         
     except Exception as e:
+        print(f"Error in export_leads: {e}")
         return jsonify({'error': f'Export failed: {str(e)}'}), 500
 
 # Get artist details
@@ -433,7 +438,7 @@ def get_artist(artist_id):
         tracks = db_manager.session.query(Track).filter_by(artist_id=artist_id).all()
         
         # Get contact attempts
-        from src.models.database import ContactAttempt
+        from config.database import ContactAttempt
         contacts = db_manager.session.query(ContactAttempt).filter_by(artist_id=artist_id).all()
         
         result = {
@@ -489,6 +494,7 @@ def get_artist(artist_id):
         return jsonify(result)
         
     except Exception as e:
+        print(f"Error in get_artist: {e}")
         return jsonify({'error': f'Failed to fetch artist: {str(e)}'}), 500
 
 # Update outreach status
@@ -518,7 +524,7 @@ def update_outreach_status(artist_id):
         # Log the outreach attempt if notes provided
         notes = data.get('notes')
         if notes:
-            from src.models.database import OutreachLog
+            from config.database import OutreachLog
             outreach_log = OutreachLog(
                 artist_id=artist_id,
                 contact_date=datetime.utcnow(),
@@ -538,6 +544,7 @@ def update_outreach_status(artist_id):
         
     except Exception as e:
         db_manager.session.rollback()
+        print(f"Error in update_outreach_status: {e}")
         return jsonify({'error': f'Failed to update outreach status: {str(e)}'}), 500
 
 # Dashboard statistics
@@ -545,51 +552,12 @@ def update_outreach_status(artist_id):
 def dashboard_stats():
     """Get dashboard statistics"""
     try:
-        # Get basic counts
-        total_artists = db_manager.session.query(Artist).count()
-        
-        # Get tier distribution
-        tier_counts = {}
-        for tier in ['A', 'B', 'C', 'D']:
-            count = db_manager.session.query(Artist).filter_by(lead_tier=tier).count()
-            tier_counts[tier] = count
-        
-        # Get region distribution
-        from sqlalchemy import func
-        region_query = db_manager.session.query(
-            Artist.region, func.count(Artist.id)
-        ).group_by(Artist.region).all()
-        
-        region_counts = {region: count for region, count in region_query if region}
-        
-        # Get outreach status distribution
-        outreach_query = db_manager.session.query(
-            Artist.outreach_status, func.count(Artist.id)
-        ).group_by(Artist.outreach_status).all()
-        
-        outreach_counts = {status: count for status, count in outreach_query if status}
-        
-        # Get recent activity (last 7 days)
-        from datetime import timedelta
-        week_ago = datetime.utcnow() - timedelta(days=7)
-        recent_leads = db_manager.session.query(Artist).filter(
-            Artist.created_at >= week_ago
-        ).count()
-        
-        return jsonify({
-            'totals': {
-                'artists': total_artists,
-                'recent_leads': recent_leads
-            },
-            'distributions': {
-                'tiers': tier_counts,
-                'regions': region_counts,
-                'outreach_status': outreach_counts
-            },
-            'generated_at': datetime.utcnow().isoformat()
-        })
+        stats = db_manager.get_dashboard_stats()
+        stats['generated_at'] = datetime.utcnow().isoformat()
+        return jsonify(stats)
         
     except Exception as e:
+        print(f"Error in dashboard_stats: {e}")
         return jsonify({'error': f'Failed to fetch dashboard stats: {str(e)}'}), 500
 
 if __name__ == '__main__':

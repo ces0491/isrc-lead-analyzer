@@ -79,9 +79,8 @@ class RateLimitManager:
     
     def make_request(self, api_name: str, endpoint: str, params: Dict = None, 
                     headers: Dict = None, method: str = 'GET') -> Optional[Dict]:
-        """
-        Make a rate-limited synchronous API request
-        """
+        """Make a rate-limited synchronous API request"""
+        
         can_request, wait_time = self._can_make_request(api_name)
         
         if not can_request:
@@ -90,7 +89,7 @@ class RateLimitManager:
                 return None
             else:
                 print(f"Rate limiting {api_name}. Waiting {wait_time:.1f} seconds...")
-                time.sleep(wait_time + 1)  # Add 1 second buffer
+                time.sleep(wait_time + 1)
         
         config = self.api_configs[api_name]
         url = config.base_url + endpoint.lstrip('/')
@@ -114,8 +113,9 @@ class RateLimitManager:
             params['key'] = config.api_key
         
         try:
-            # Record the request
-            self.request_history[api_name].append(time.time())
+            # Record the request with consistent timestamp
+            current_time = time.time()
+            self.request_history[api_name].append(current_time)
             self.daily_counters[api_name] += 1
             
             # Make the request
@@ -143,12 +143,14 @@ class RateLimitManager:
         except json.JSONDecodeError as e:
             print(f"Failed to parse JSON response from {api_name}: {str(e)}")
             return None
+        except Exception as e:
+            print(f"Unexpected error in make_request for {api_name}: {str(e)}")
+            return None
     
     async def make_async_request(self, api_name: str, endpoint: str, params: Dict = None,
                                 headers: Dict = None, method: str = 'GET') -> Optional[Dict]:
-        """
-        Make a rate-limited asynchronous API request
-        """
+        """Make a rate-limited asynchronous API request"""
+        
         can_request, wait_time = self._can_make_request(api_name)
         
         if not can_request:
@@ -181,8 +183,9 @@ class RateLimitManager:
             params['key'] = config.api_key
         
         try:
-            # Record the request
-            self.request_history[api_name].append(time.time())
+            # Record the request with consistent timestamp
+            current_time = time.time()
+            self.request_history[api_name].append(current_time)
             self.daily_counters[api_name] += 1
             
             # Make the async request
@@ -204,6 +207,9 @@ class RateLimitManager:
         except asyncio.TimeoutError:
             print(f"Request timeout for {api_name}")
             return None
+        except Exception as e:
+            print(f"Unexpected error in make_async_request for {api_name}: {str(e)}")
+            return None
     
     async def _process_async_response(self, response: aiohttp.ClientResponse, api_name: str) -> Optional[Dict]:
         """Process async response and handle different content types"""
@@ -222,6 +228,9 @@ class RateLimitManager:
             return None
         except json.JSONDecodeError as e:
             print(f"Failed to parse JSON response from {api_name}: {str(e)}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error processing response from {api_name}: {str(e)}")
             return None
     
     def get_rate_limit_status(self) -> Dict:
@@ -260,6 +269,12 @@ class RateLimitManager:
         estimated_seconds *= 1.2  # 20% buffer
         
         return estimated_seconds
+    
+    def reset_counters(self):
+        """Reset all counters (for testing purposes)"""
+        self.request_history.clear()
+        self.daily_counters.clear()
+        self.last_reset.clear()
 
 # Global rate limiter instance
 rate_limiter = RateLimitManager()

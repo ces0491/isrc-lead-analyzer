@@ -11,6 +11,7 @@ from src.core.rate_limiter import RateLimitManager
 from src.core.scoring import LeadScoringEngine
 from src.integrations.base_client import musicbrainz_client, spotify_client, lastfm_client
 from src.models.database import DatabaseManager
+from src.utils.validators import validate_isrc
 from config.settings import settings
 
 class LeadAggregationPipeline:
@@ -35,9 +36,23 @@ class LeadAggregationPipeline:
     
     def process_isrc(self, isrc: str, save_to_db: bool = True) -> Dict:
         """
-        Main processing function for a single ISRC
+        Main processing function for a single ISRC with proper error handling
         Returns comprehensive artist and track data with scoring
         """
+        # Validate ISRC first
+        is_valid, cleaned_isrc_or_error = validate_isrc(isrc)
+        if not is_valid:
+            self.stats['failed'] += 1
+            return {
+                'isrc': isrc,
+                'status': 'failed',
+                'errors': [cleaned_isrc_or_error],
+                'processing_time': 0,
+                'data_sources_used': []
+            }
+        
+        isrc = cleaned_isrc_or_error  # Use cleaned ISRC
+        
         self.stats['processed'] += 1
         if not self.stats['start_time']:
             self.stats['start_time'] = datetime.now()
@@ -123,18 +138,20 @@ class LeadAggregationPipeline:
             if save_to_db:
                 print("  7. Saving to database...")
                 try:
-                    artist_id = self.db_manager.save_artist_data({
-                        'name': artist_name,
-                        'musicbrainz_id': mb_data.get('artist', {}).get('musicbrainz_artist_id'),
-                        'spotify_id': spotify_data.get('spotify_id') if spotify_data else None,
-                        'country': mb_data.get('artist', {}).get('country'),
-                        'genre': self._extract_primary_genre(result),
-                        'monthly_listeners': spotify_data.get('followers', 0) if spotify_data else 0,
-                        'scores': scores,
-                        'track_data': result['track_data'],
-                        'contacts': contacts
-                    })
-                    result['artist_id'] = artist_id
+                    with self.db_manager as db:
+                        artist_id = db.save_artist_data({
+                            'name': artist_name,
+                            'musicbrainz_id': mb_data.get('artist', {}).get('musicbrainz_artist_id'),
+                            'spotify_id': spotify_data.get('spotify_id') if spotify_data else None,
+                            'country': mb_data.get('artist', {}).get('country'),
+                            'region': self._determine_region(mb_data.get('artist', {}).get('country')),
+                            'genre': self._extract_primary_genre(result),
+                            'monthly_listeners': spotify_data.get('followers', 0) if spotify_data else 0,
+                            'scores': scores,
+                            'track_data': result['track_data'],
+                            'contacts': contacts
+                        })
+                        result['artist_id'] = artist_id
                 except Exception as e:
                     result['errors'].append(f"Database save failed: {str(e)}")
             
@@ -279,55 +296,60 @@ class LeadAggregationPipeline:
         spotify_data = result.get('spotify_data', {})
         lastfm_data = result.get('lastfm_data', {})
         
+        # Safely extract nested data
+        mb_artist = mb_data.get('artist', {})
+        mb_release = mb_data.get('release', {})
+        mb_track = mb_data.get('track', {})
+        
         # Aggregate artist data
         artist_data = {
             'name': self._get_best_value([
                 spotify_data.get('name'),
-                mb_data.get('artist', {}).get('name'),
+                mb_artist.get('name'),
                 lastfm_data.get('artist', {}).get('name')
-            ]),
-            'musicbrainz_id': mb_data.get('artist', {}).get('musicbrainz_artist_id'),
-            'spotify_id': spotify_data.get('spotify_id'),
-            'country': mb_data.get('artist', {}).get('country'),
-            'region': self._determine_region(mb_data.get('artist', {}).get('country')),
+            ]) or "Unknown Artist",
+            'musicbrainz_id': mb_artist.get('musicbrainz_artist_id') or "",
+            'spotify_id': spotify_data.get('spotify_id') or "",
+            'country': self._normalize_country(mb_artist.get('country') or mb_release.get('country')),
+            'region': self._determine_region(mb_artist.get('country') or mb_release.get('country')),
             'genres': self._merge_genres([
                 spotify_data.get('genres', []),
-                mb_data.get('artist', {}).get('genres', []),
+                mb_artist.get('genres', []),
                 lastfm_data.get('artist', {}).get('tags', [])
             ]),
-            'monthly_listeners': spotify_data.get('followers', 0),
-            'popularity': spotify_data.get('popularity', 0),
-            'lastfm_listeners': lastfm_data.get('artist', {}).get('listeners', 0),
-            'lastfm_playcount': lastfm_data.get('artist', {}).get('playcount', 0),
-            'release_count': spotify_data.get('release_count', 0),
+            'monthly_listeners': self._safe_int(spotify_data.get('followers', 0)),
+            'popularity': self._safe_int(spotify_data.get('popularity', 0)),
+            'lastfm_listeners': self._safe_int(lastfm_data.get('artist', {}).get('listeners', 0)),
+            'lastfm_playcount': self._safe_int(lastfm_data.get('artist', {}).get('playcount', 0)),
+            'release_count': self._safe_int(spotify_data.get('release_count', 0)),
             'last_release_date': self._parse_date(spotify_data.get('last_release_date')),
-            'social_urls': mb_data.get('artist', {}).get('urls', {}),
-            'website': mb_data.get('artist', {}).get('urls', {}).get('website')
+            'social_urls': mb_artist.get('urls', {}),
+            'website': mb_artist.get('urls', {}).get('website') or ""
         }
         
         # Aggregate track data
         track_data = {
-            'isrc': result.get('isrc'),
+            'isrc': result.get('isrc') or "",
             'title': self._get_best_value([
-                mb_data.get('track', {}).get('title'),
+                mb_track.get('title'),
                 spotify_data.get('track_info', {}).get('name')
-            ]),
-            'musicbrainz_recording_id': mb_data.get('track', {}).get('musicbrainz_recording_id'),
-            'spotify_track_id': spotify_data.get('track_info', {}).get('spotify_track_id'),
+            ]) or "Unknown Track",
+            'musicbrainz_recording_id': mb_track.get('musicbrainz_recording_id') or "",
+            'spotify_track_id': spotify_data.get('track_info', {}).get('spotify_track_id') or "",
             'release_date': self._parse_date(self._get_best_value([
-                mb_data.get('release', {}).get('release_date'),
+                mb_release.get('release_date'),
                 spotify_data.get('track_info', {}).get('album', {}).get('release_date')
             ])),
             'label': self._get_best_value([
-                mb_data.get('release', {}).get('label'),
+                mb_release.get('label'),
                 spotify_data.get('track_info', {}).get('album', {}).get('label')
-            ]),
-            'duration_ms': self._get_best_value([
+            ]) or "Unknown Label",
+            'duration_ms': self._safe_int(self._get_best_value([
                 spotify_data.get('track_info', {}).get('duration_ms'),
-                mb_data.get('track', {}).get('length_ms')
-            ]),
-            'spotify_popularity': spotify_data.get('track_info', {}).get('popularity', 0),
-            'lastfm_playcount': lastfm_data.get('track', {}).get('playcount', 0),
+                mb_track.get('length_ms')
+            ])),
+            'spotify_popularity': self._safe_int(spotify_data.get('track_info', {}).get('popularity', 0)),
+            'lastfm_playcount': self._safe_int(lastfm_data.get('track', {}).get('playcount', 0)),
             'platforms_available': self._detect_platforms(result),
             'missing_platforms': []  # Will be calculated in scoring
         }
@@ -363,9 +385,6 @@ class LeadAggregationPipeline:
                     'confidence': 85
                 })
         
-        # Extract potential emails from social media handles
-        # This is a placeholder - in practice, you'd need to scrape or use additional APIs
-        
         # Add Spotify profile as contact method
         spotify_id = result.get('spotify_data', {}).get('spotify_id')
         if spotify_id:
@@ -382,9 +401,9 @@ class LeadAggregationPipeline:
     def _get_best_value(self, values: List) -> str:
         """Get the best non-empty value from a list of options"""
         for value in values:
-            if value and str(value).strip():
+            if value is not None and str(value).strip():
                 return str(value).strip()
-        return None
+        return ""  # Return empty string instead of None
     
     def _merge_genres(self, genre_lists: List[List]) -> List[str]:
         """Merge and deduplicate genres from multiple sources"""
@@ -408,37 +427,75 @@ class LeadAggregationPipeline:
         if not country:
             return 'unknown'
         
-        country = country.upper()
+        country = str(country).upper().strip()
+        if not country:
+            return 'unknown'
+            
         for region, countries in settings.target_regions.items():
             if country in countries:
                 return region
         
         return 'other'
     
-    def _parse_date(self, date_str: str) -> Optional[str]:
+    def _safe_int(self, value) -> int:
+        """Safely convert value to integer, return 0 if not possible"""
+        if value is None:
+            return 0
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return 0
+    
+    def _normalize_country(self, country) -> str:
+        """Normalize country code/name to standard format"""
+        if not country:
+            return ""
+        
+        country_str = str(country).strip().upper()
+        if not country_str:
+            return ""
+        
+        # Map common variations to standard codes
+        country_mappings = {
+            'NEW ZEALAND': 'NZ',
+            'AUSTRALIA': 'AU', 
+            'UNITED STATES': 'US',
+            'UNITED KINGDOM': 'GB',
+            'CANADA': 'CA'
+        }
+        
+        return country_mappings.get(country_str, country_str)
+    
+    def _parse_date(self, date_str) -> Optional[str]:
         """Parse and normalize date strings"""
         if not date_str:
             return None
         
-        # Just return the string for now - could add more sophisticated parsing
-        return str(date_str).strip()
+        try:
+            # Clean the date string
+            date_clean = str(date_str).strip()
+            if not date_clean:
+                return None
+            return date_clean
+        except:
+            return None
     
     def _extract_primary_genre(self, result: Dict) -> str:
         """Extract the primary genre from aggregated data"""
         # Try Spotify first (usually most accurate)
         spotify_genres = result.get('spotify_data', {}).get('genres', [])
-        if spotify_genres:
-            return spotify_genres[0]
+        if spotify_genres and len(spotify_genres) > 0:
+            return str(spotify_genres[0])
         
         # Try Last.fm tags
         lastfm_tags = result.get('lastfm_data', {}).get('artist', {}).get('tags', [])
-        if lastfm_tags:
-            return lastfm_tags[0]
+        if lastfm_tags and len(lastfm_tags) > 0:
+            return str(lastfm_tags[0])
         
         # Try MusicBrainz tags
         mb_tags = result.get('musicbrainz_data', {}).get('artist', {}).get('tags', [])
-        if mb_tags:
-            return mb_tags[0]
+        if mb_tags and len(mb_tags) > 0:
+            return str(mb_tags[0])
         
         return 'unknown'
     
@@ -476,7 +533,7 @@ class LeadAggregationPipeline:
 # Utility functions for testing
 def test_pipeline():
     """Test the pipeline with sample ISRCs"""
-    from src.core.rate_limiter import rate_limiter
+    from src.core.rate_limiter import RateLimitManager
     
     # Sample test ISRCs - replace with real ones for testing
     test_isrcs = [
@@ -484,7 +541,8 @@ def test_pipeline():
         "GBUM71505078",  # Another example
     ]
     
-    pipeline = LeadAggregationPipeline(rate_limiter)
+    rate_manager = RateLimitManager()
+    pipeline = LeadAggregationPipeline(rate_manager)
     
     for isrc in test_isrcs:
         print(f"\n{'='*50}")

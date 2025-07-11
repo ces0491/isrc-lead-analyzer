@@ -38,7 +38,7 @@ class LeadScoringEngine:
         Main scoring function that combines all factors
         Returns comprehensive scoring breakdown
         """
-        # Extract data components
+        # Extract data components with safe defaults
         track_data = artist_data.get('track_data', {})
         spotify_data = artist_data.get('spotify_data', {})
         lastfm_data = artist_data.get('lastfm_data', {})
@@ -94,17 +94,18 @@ class LeadScoringEngine:
         
         # From track/release data
         if track_data.get('label'):
-            labels.append(track_data['label'].lower())
+            labels.append(self._safe_str(track_data['label']).lower())
         
         # From MusicBrainz release data
         if mb_data.get('release', {}).get('label'):
-            labels.append(mb_data['release']['label'].lower())
+            labels.append(self._safe_str(mb_data['release']['label']).lower())
         
         # From Spotify album data
         if spotify_data.get('album', {}).get('label'):
-            labels.append(spotify_data['album']['label'].lower())
+            labels.append(self._safe_str(spotify_data['album']['label']).lower())
         
-        artist_name = (
+        # Get artist name safely
+        artist_name = self._safe_str(
             spotify_data.get('name') or 
             mb_data.get('artist', {}).get('name') or 
             track_data.get('artist_name', '')
@@ -117,17 +118,19 @@ class LeadScoringEngine:
             # Analyze all labels found
             is_major = any(
                 any(major in label for major in self.major_labels)
-                for label in labels
+                for label in labels if label
             )
             
             is_distributor = any(
                 any(dist in label for dist in self.distributors)
-                for label in labels
+                for label in labels if label
             )
             
             is_self_released = any(
-                artist_name in label or 'self-released' in label or 'independent' in label
-                for label in labels
+                (artist_name and artist_name in label) or 
+                'self-released' in label or 
+                'independent' in label
+                for label in labels if label
             )
             
             if is_major:
@@ -151,6 +154,9 @@ class LeadScoringEngine:
         
         # 1. Check for missing major platforms (20 points max)
         platforms_available = track_data.get('platforms_available', [])
+        if not isinstance(platforms_available, list):
+            platforms_available = []
+            
         missing_platforms = [p for p in self.major_platforms if p not in platforms_available]
         
         if len(missing_platforms) >= 3:
@@ -169,8 +175,8 @@ class LeadScoringEngine:
             score += self.weights['opportunity']['no_publishing_admin']
         
         # 4. Growth potential indicators (15 points max)
-        monthly_listeners = spotify_data.get('followers', 0)
-        popularity = spotify_data.get('popularity', 0)
+        monthly_listeners = self._safe_int(spotify_data.get('followers', 0))
+        popularity = self._safe_int(spotify_data.get('popularity', 0))
         
         # Sweet spot: 10K-500K listeners with decent popularity
         if 10000 <= monthly_listeners <= 500000 and popularity >= 30:
@@ -213,12 +219,14 @@ class LeadScoringEngine:
         if not country:
             return self.weights['geographic']['other']  # Default low score
         
-        country = country.upper()
+        country_str = self._safe_str(country).upper()
+        if not country_str:
+            return self.weights['geographic']['other']
         
         # Check against target regions
         for region, score_value in self.weights['geographic'].items():
             region_countries = self.target_regions.get(region, [])
-            if country in region_countries:
+            if country_str in region_countries:
                 return score_value
         
         # Default for unmatched countries
@@ -251,16 +259,20 @@ class LeadScoringEngine:
         cutoff_date = datetime.now() - timedelta(days=365)
         return release_date >= cutoff_date
     
-    def _parse_date(self, date_str: str) -> Optional[datetime]:
+    def _parse_date(self, date_str) -> Optional[datetime]:
         """Parse date string in various formats"""
         if not date_str:
+            return None
+        
+        date_clean = self._safe_str(date_str).strip()
+        if not date_clean:
             return None
         
         formats = ['%Y-%m-%d', '%Y-%m', '%Y', '%d-%m-%Y', '%m/%d/%Y']
         
         for fmt in formats:
             try:
-                return datetime.strptime(date_str, fmt)
+                return datetime.strptime(date_clean, fmt)
             except ValueError:
                 continue
         
@@ -323,7 +335,7 @@ class LeadScoringEngine:
         factors = []
         track_data = artist_data.get('track_data', {})
         
-        label = track_data.get('label', '').lower()
+        label = self._safe_str(track_data.get('label', '')).lower()
         if not label:
             factors.append("No label information found - assumed self-released")
         elif any(major in label for major in self.major_labels):
@@ -343,12 +355,13 @@ class LeadScoringEngine:
         
         # Platform availability
         platforms = track_data.get('platforms_available', [])
-        missing = [p for p in self.major_platforms if p not in platforms]
-        if missing:
-            factors.append(f"Missing from platforms: {', '.join(missing[:3])}")
+        if isinstance(platforms, list):
+            missing = [p for p in self.major_platforms if p not in platforms]
+            if missing:
+                factors.append(f"Missing from platforms: {', '.join(missing[:3])}")
         
         # Growth indicators
-        followers = spotify_data.get('followers', 0)
+        followers = self._safe_int(spotify_data.get('followers', 0))
         if 10000 <= followers <= 500000:
             factors.append(f"Growing audience: {followers:,} followers")
         
@@ -372,18 +385,33 @@ class LeadScoringEngine:
         
         if country:
             # Find which region this country belongs to
-            country = country.upper()
+            country_str = self._safe_str(country).upper()
             for region, countries in self.target_regions.items():
-                if country in countries:
+                if country_str in countries:
                     region_name = region.replace('_', ' ').title()
-                    factors.append(f"Located in target region: {region_name} ({country})")
+                    factors.append(f"Located in target region: {region_name} ({country_str})")
                     return factors
             
-            factors.append(f"Outside target regions: {country}")
+            factors.append(f"Outside target regions: {country_str}")
         else:
             factors.append("Location unknown")
         
         return factors
+    
+    def _safe_str(self, value) -> str:
+        """Safely convert value to string"""
+        if value is None:
+            return ""
+        return str(value).strip()
+    
+    def _safe_int(self, value) -> int:
+        """Safely convert value to integer"""
+        if value is None:
+            return 0
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return 0
 
 # Utility functions for testing and validation
 def score_artist_from_isrc(isrc: str) -> Dict:
@@ -392,9 +420,10 @@ def score_artist_from_isrc(isrc: str) -> Dict:
     Useful for testing and standalone scoring
     """
     from src.core.pipeline import LeadAggregationPipeline
-    from src.core.rate_limiter import rate_limiter
+    from src.core.rate_limiter import RateLimitManager
     
-    pipeline = LeadAggregationPipeline(rate_limiter)
+    rate_manager = RateLimitManager()
+    pipeline = LeadAggregationPipeline(rate_manager)
     scoring_engine = LeadScoringEngine()
     
     # Process the ISRC

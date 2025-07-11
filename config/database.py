@@ -186,10 +186,33 @@ def reset_db():
     print("Database reset completed!")
 
 class DatabaseManager:
-    """Database operations manager"""
+    """Database operations manager with proper session handling"""
     
     def __init__(self):
-        self.session = SessionLocal()
+        self._session = None
+    
+    @property
+    def session(self):
+        """Get or create database session"""
+        if self._session is None:
+            self._session = SessionLocal()
+        return self._session
+    
+    def close(self):
+        """Close database session"""
+        if self._session:
+            self._session.close()
+            self._session = None
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.session.rollback()
+        else:
+            self.session.commit()
+        self.close()
     
     def save_artist_data(self, artist_data: dict) -> int:
         """Save processed artist data to database"""
@@ -215,7 +238,6 @@ class DatabaseManager:
             if artist_data.get('contacts'):
                 self._save_contacts(artist_id, artist_data['contacts'])
             
-            self.session.commit()
             return artist_id
             
         except Exception as e:
@@ -224,19 +246,32 @@ class DatabaseManager:
     
     def _create_artist(self, data: dict) -> int:
         """Create new artist record"""
+        scores = data.get('scores', {})
+        
+        # Safely extract string values with defaults
+        name = data.get('name') or "Unknown Artist"
+        musicbrainz_id = data.get('musicbrainz_id') or None
+        spotify_id = data.get('spotify_id') or None
+        country = data.get('country') or None
+        region = data.get('region') or "unknown"
+        genre = data.get('genre') or None
+        
+        # Safely extract numeric values
+        monthly_listeners = self._safe_int(data.get('monthly_listeners', 0))
+        
         artist = Artist(
-            name=data.get('name'),
-            musicbrainz_id=data.get('musicbrainz_id'),
-            spotify_id=data.get('spotify_id'),
-            country=data.get('country'),
-            region=data.get('region'),
-            genre=data.get('genre'),
-            independence_score=data.get('scores', {}).get('independence_score', 0),
-            opportunity_score=data.get('scores', {}).get('opportunity_score', 0),
-            geographic_score=data.get('scores', {}).get('geographic_score', 0),
-            total_score=data.get('scores', {}).get('total_score', 0),
-            lead_tier=data.get('scores', {}).get('tier', 'D'),
-            monthly_listeners=data.get('monthly_listeners', 0),
+            name=name,
+            musicbrainz_id=musicbrainz_id,
+            spotify_id=spotify_id,
+            country=country,
+            region=region,
+            genre=genre,
+            independence_score=scores.get('independence_score', 0),
+            opportunity_score=scores.get('opportunity_score', 0),
+            geographic_score=scores.get('geographic_score', 0),
+            total_score=scores.get('total_score', 0.0),
+            lead_tier=scores.get('tier', 'D'),
+            monthly_listeners=monthly_listeners,
             last_scraped=datetime.utcnow()
         )
         
@@ -261,6 +296,14 @@ class DatabaseManager:
         # Update metrics if provided
         if data.get('monthly_listeners'):
             artist.monthly_listeners = data['monthly_listeners']
+        
+        # Update other fields
+        if data.get('country'):
+            artist.country = data['country']
+        if data.get('region'):
+            artist.region = data['region']
+        if data.get('genre'):
+            artist.genre = data['genre']
     
     def _save_track_data(self, artist_id: int, track_data: dict):
         """Save track information"""
@@ -268,38 +311,82 @@ class DatabaseManager:
         if not isrc:
             return
         
+        # Clean and validate required fields
+        title = track_data.get('title') or "Unknown Track"
+        
         # Check if track already exists
         existing_track = self.session.query(Track).filter_by(isrc=isrc).first()
         
         if existing_track:
             existing_track.updated_at = datetime.utcnow()
+            if track_data.get('title'):
+                existing_track.title = str(track_data['title'])
+            if track_data.get('spotify_track_id'):
+                existing_track.spotify_track_id = str(track_data['spotify_track_id'])
+            if track_data.get('spotify_popularity'):
+                existing_track.spotify_popularity = self._safe_int(track_data['spotify_popularity'])
         else:
             track = Track(
-                isrc=isrc,
-                title=track_data.get('title'),
+                isrc=str(isrc),
+                title=title,
                 artist_id=artist_id,
                 spotify_track_id=track_data.get('spotify_track_id'),
                 musicbrainz_recording_id=track_data.get('musicbrainz_recording_id'),
-                release_date=track_data.get('release_date'),
+                release_date=self._parse_datetime(track_data.get('release_date')),
                 label=track_data.get('label'),
-                duration_ms=track_data.get('duration_ms'),
-                spotify_popularity=track_data.get('spotify_popularity'),
+                duration_ms=self._safe_int(track_data.get('duration_ms')),
+                spotify_popularity=self._safe_int(track_data.get('spotify_popularity')),
                 platforms_available=track_data.get('platforms_available', []),
                 missing_platforms=track_data.get('missing_platforms', [])
             )
             self.session.add(track)
     
+    def _safe_int(self, value) -> int:
+        """Safely convert value to integer, return 0 if not possible"""
+        if value is None:
+            return 0
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return 0
+    
     def _save_contacts(self, artist_id: int, contacts: list):
         """Save contact discovery results"""
         for contact in contacts:
-            contact_attempt = ContactAttempt(
+            # Check if contact already exists
+            existing_contact = self.session.query(ContactAttempt).filter_by(
                 artist_id=artist_id,
                 contact_method=contact.get('type'),
-                contact_value=contact.get('value'),
-                confidence_score=contact.get('confidence', 50),
-                source=contact.get('source')
-            )
-            self.session.add(contact_attempt)
+                contact_value=contact.get('value')
+            ).first()
+            
+            if not existing_contact:
+                contact_attempt = ContactAttempt(
+                    artist_id=artist_id,
+                    contact_method=contact.get('type'),
+                    contact_value=contact.get('value'),
+                    confidence_score=contact.get('confidence', 50),
+                    source=contact.get('source')
+                )
+                self.session.add(contact_attempt)
+    
+    def _parse_datetime(self, date_str):
+        """Parse datetime string safely"""
+        if not date_str:
+            return None
+        
+        try:
+            # Try common formats
+            formats = ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%Y-%m', '%Y']
+            for fmt in formats:
+                try:
+                    return datetime.strptime(str(date_str), fmt)
+                except ValueError:
+                    continue
+        except Exception:
+            pass
+        
+        return None
     
     def get_leads(self, tier=None, region=None, limit=50, offset=0):
         """Get filtered lead list"""
@@ -315,9 +402,62 @@ class DatabaseManager:
         
         return query.all()
     
+    def get_artist_by_id(self, artist_id: int):
+        """Get artist by ID"""
+        return self.session.query(Artist).filter_by(id=artist_id).first()
+    
+    def get_tracks_by_artist(self, artist_id: int):
+        """Get tracks for an artist"""
+        return self.session.query(Track).filter_by(artist_id=artist_id).all()
+    
+    def get_contacts_by_artist(self, artist_id: int):
+        """Get contacts for an artist"""
+        return self.session.query(ContactAttempt).filter_by(artist_id=artist_id).all()
+    
+    def update_outreach_status(self, artist_id: int, status: str):
+        """Update outreach status for an artist"""
+        artist = self.session.query(Artist).filter_by(id=artist_id).first()
+        if artist:
+            artist.outreach_status = status
+            artist.updated_at = datetime.utcnow()
+            self.session.commit()
+    
+    def get_dashboard_stats(self):
+        """Get dashboard statistics"""
+        try:
+            from sqlalchemy import func
+            
+            total_artists = self.session.query(Artist).count()
+            
+            # Get tier distribution
+            tier_counts = {}
+            for tier in ['A', 'B', 'C', 'D']:
+                count = self.session.query(Artist).filter_by(lead_tier=tier).count()
+                tier_counts[tier] = count
+            
+            # Get region distribution
+            region_query = self.session.query(
+                Artist.region, func.count(Artist.id)
+            ).group_by(Artist.region).all()
+            
+            region_counts = {region: count for region, count in region_query if region}
+            
+            return {
+                'total_artists': total_artists,
+                'tier_distribution': tier_counts,
+                'region_distribution': region_counts
+            }
+        except Exception as e:
+            print(f"Error getting dashboard stats: {e}")
+            return {
+                'total_artists': 0,
+                'tier_distribution': {},
+                'region_distribution': {}
+            }
+    
     def __del__(self):
-        if hasattr(self, 'session'):
-            self.session.close()
+        """Cleanup on deletion"""
+        self.close()
 
 if __name__ == "__main__":
     # Initialize database if run directly
