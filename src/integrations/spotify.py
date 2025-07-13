@@ -7,7 +7,7 @@ import requests
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote
-from .base_client import BaseAPIClient
+from .base_api import BaseAPIClient
 from config.settings import settings
 
 

@@ -13,7 +13,7 @@ import logging
 from typing import Optional, Dict, Any, List
 from urllib.parse import quote
 
-from .base_client import BaseAPIClient
+from .base_api import BaseAPIClient
 from config.settings import settings
 
 logger = logging.getLogger(__name__)

@@ -5,7 +5,7 @@ Extracted from the existing base_client.py implementation.
 
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote
-from .base_client import BaseAPIClient
+from .base_api import BaseAPIClient
 
 
 class MusicBrainzClient(BaseAPIClient):

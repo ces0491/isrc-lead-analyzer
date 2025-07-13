@@ -4,7 +4,7 @@ Extracted from existing base_client.py implementation.
 """
 
 from typing import Dict, List, Optional
-from .base_client import BaseAPIClient
+from .base_api import BaseAPIClient
 from config.settings import settings
 
 
