@@ -1,21 +1,19 @@
 """
-Rate limiting system for API calls
+Rate limiting system for API calls - Production version without aiohttp
 Respects free tier limitations while maximizing throughput
 """
 import time
-import asyncio
 import json
 from typing import Dict, List, Optional
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
 import requests
-import aiohttp
 from config.settings import settings
 
 class RateLimitManager:
     """
     Manages rate limits for multiple APIs with different constraints
-    Supports both sync and async operations
+    Production version without async dependencies
     """
     
     def __init__(self):
@@ -26,8 +24,9 @@ class RateLimitManager:
         self.session = requests.Session()
         
         # Setup user agents for respectful scraping
+        contact_email = getattr(settings, 'contact_email', 'contact@precise.digital')
         self.session.headers.update({
-            'User-Agent': 'PreciseDigitalLeadGen/1.0 (contact@precise.digital)'
+            'User-Agent': f'PreciseDigitalLeadGen/1.0 ({contact_email})'
         })
     
     def _clean_old_requests(self, api_name: str):
@@ -147,92 +146,6 @@ class RateLimitManager:
             print(f"Unexpected error in make_request for {api_name}: {str(e)}")
             return None
     
-    async def make_async_request(self, api_name: str, endpoint: str, params: Dict = None,
-                                headers: Dict = None, method: str = 'GET') -> Optional[Dict]:
-        """Make a rate-limited asynchronous API request"""
-        
-        can_request, wait_time = self._can_make_request(api_name)
-        
-        if not can_request:
-            if wait_time > 300:  # More than 5 minutes
-                print(f"Rate limit exceeded for {api_name}. Wait time: {wait_time/3600:.1f} hours")
-                return None
-            else:
-                print(f"Rate limiting {api_name}. Waiting {wait_time:.1f} seconds...")
-                await asyncio.sleep(wait_time + 1)  # Add 1 second buffer
-        
-        config = self.api_configs[api_name]
-        url = config.base_url + endpoint.lstrip('/')
-        
-        # Prepare headers
-        request_headers = {}
-        if config.headers:
-            request_headers.update(config.headers)
-        if headers:
-            request_headers.update(headers)
-        
-        # Add API key if available
-        if config.api_key and api_name == 'lastfm':
-            if not params:
-                params = {}
-            params['api_key'] = config.api_key
-            params['format'] = 'json'
-        elif config.api_key and api_name == 'youtube':
-            if not params:
-                params = {}
-            params['key'] = config.api_key
-        
-        try:
-            # Record the request with consistent timestamp
-            current_time = time.time()
-            self.request_history[api_name].append(current_time)
-            self.daily_counters[api_name] += 1
-            
-            # Make the async request
-            async with aiohttp.ClientSession() as session:
-                if method.upper() == 'GET':
-                    async with session.get(url, params=params, headers=request_headers,
-                                         timeout=aiohttp.ClientTimeout(total=settings.request_timeout)) as response:
-                        return await self._process_async_response(response, api_name)
-                elif method.upper() == 'POST':
-                    async with session.post(url, json=params, headers=request_headers,
-                                          timeout=aiohttp.ClientTimeout(total=settings.request_timeout)) as response:
-                        return await self._process_async_response(response, api_name)
-                else:
-                    raise ValueError(f"Unsupported HTTP method: {method}")
-                    
-        except aiohttp.ClientError as e:
-            print(f"Async request failed for {api_name}: {str(e)}")
-            return None
-        except asyncio.TimeoutError:
-            print(f"Request timeout for {api_name}")
-            return None
-        except Exception as e:
-            print(f"Unexpected error in make_async_request for {api_name}: {str(e)}")
-            return None
-    
-    async def _process_async_response(self, response: aiohttp.ClientResponse, api_name: str) -> Optional[Dict]:
-        """Process async response and handle different content types"""
-        try:
-            response.raise_for_status()
-            content_type = response.headers.get('content-type', '')
-            
-            if 'application/json' in content_type:
-                return await response.json()
-            else:
-                text = await response.text()
-                return {'text': text, 'status_code': response.status}
-                
-        except aiohttp.ClientResponseError as e:
-            print(f"Response error from {api_name}: {str(e)}")
-            return None
-        except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON response from {api_name}: {str(e)}")
-            return None
-        except Exception as e:
-            print(f"Unexpected error processing response from {api_name}: {str(e)}")
-            return None
-    
     def get_rate_limit_status(self) -> Dict:
         """Get current rate limit status for all APIs"""
         status = {}
@@ -286,14 +199,6 @@ def safe_request(api_name: str, endpoint: str, params: Dict = None, **kwargs) ->
         return rate_limiter.make_request(api_name, endpoint, params, **kwargs)
     except Exception as e:
         print(f"Unexpected error in safe_request for {api_name}: {str(e)}")
-        return None
-
-async def safe_async_request(api_name: str, endpoint: str, params: Dict = None, **kwargs) -> Optional[Dict]:
-    """Make a safe async API request with error handling"""
-    try:
-        return await rate_limiter.make_async_request(api_name, endpoint, params, **kwargs)
-    except Exception as e:
-        print(f"Unexpected error in safe_async_request for {api_name}: {str(e)}")
         return None
 
 if __name__ == "__main__":

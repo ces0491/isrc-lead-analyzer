@@ -1,26 +1,29 @@
 services:
   # PostgreSQL Database Service
   - type: pserv
-    name: isrc-analyzer-postgres
+    name: precise-digital-postgres
     env: node
     plan: starter
     
   # Backend API Service
   - type: web
-    name: isrc-analyzer-api
+    name: precise-digital-api
     env: python
     plan: starter
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-    startCommand: "python run.py"
+    startCommand: "gunicorn -w 4 -b 0.0.0.0:$PORT run:app"
     envVars:
       - key: FLASK_ENV
         value: production
+      - key: FLASK_DEBUG
+        value: false
       - key: DATABASE_URL
         fromDatabase:
-          name: isrc-analyzer-postgres
+          name: precise-digital-postgres
           property: connectionString
+      # API Keys - Set these in Render dashboard
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
@@ -29,21 +32,15 @@ services:
         sync: false
       - key: LASTFM_API_KEY
         sync: false
+      # Security
       - key: SECRET_KEY
         generateValue: true
+      # CORS Configuration
       - key: CORS_ORIGINS
-        value: https://isrc-analyzer-frontend.onrender.com
-    
-  # Frontend Static Service
-  - type: web
-    name: isrc-analyzer-frontend
-    env: static
-    plan: starter
-    buildCommand: |
-      cd frontend
-      npm ci --only=production
-      npm run build:production
-    staticPublishPath: ./frontend/build
-    envVars:
-      - key: REACT_APP_API_BASE_URL
-        value: https://isrc-analyzer-api.onrender.com/api
+        value: "*"
+      # Rate limiting
+      - key: REDIS_URL
+        value: ""
+      # Contact email for API headers
+      - key: CONTACT_EMAIL
+        value: contact@precise.digital
