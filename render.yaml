@@ -1,33 +1,20 @@
 services:
-  # PostgreSQL Database Service
   - type: pserv
     name: isrc-analyzer-postgres
     plan: starter
-    region: oregon
 
-  # Backend API Service
   - type: web
     name: isrc-analyzer-api
-    runtime: python3
+    runtime: docker
     plan: starter
-    region: oregon
-    rootDir: .
-    buildCommand: |
-      pip install --upgrade pip setuptools wheel
-      pip install --no-cache-dir -r requirements.txt
-    startCommand: "gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --worker-class sync --max-requests 1000 --max-requests-jitter 100 wsgi:app"
+    dockerfilePath: ./Dockerfile
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.7
-      - key: FLASK_ENV
-        value: production
-      - key: FLASK_DEBUG
-        value: false
       - key: DATABASE_URL
         fromDatabase:
           name: isrc-analyzer-postgres
           property: connectionString
-      # API Keys - Set these manually in Render dashboard
+      - key: FLASK_ENV
+        value: production
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
@@ -36,16 +23,8 @@ services:
         sync: false
       - key: LASTFM_API_KEY
         sync: false
-      # Security
       - key: SECRET_KEY
-        generateValue: true
-      # CORS Configuration - Update with your frontend URL
+        sync: false
       - key: CORS_ORIGINS
-        value: "https://isrc-analyzer-frontend.onrender.com,http://localhost:3000"
-      # Contact email for API headers
-      - key: CONTACT_EMAIL
-        value: contact@precise.digital
-      # API Configuration
-      - key: API_BASE_URL
-        value: https://isrc-analyzer-api.onrender.com
+        value: "*"
     healthCheckPath: /api/status
