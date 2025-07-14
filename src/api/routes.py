@@ -1,5 +1,5 @@
 """
-Flask API routes for ISRC Analyzer with YouTube Integration
+Flask API routes for ISRC Analyzer with YouTube Integration - FULLY FIXED VERSION
 API-only service for separate frontend/backend deployment
 """
 import os
@@ -9,11 +9,14 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
+from typing import Optional, Dict, Any, List
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
 
 from src.core.pipeline import LeadAggregationPipeline
 from src.core.rate_limiter import RateLimitManager
 from src.utils.validators import validate_isrc
-from config.database import DatabaseManager, get_db, Artist, Track
+from config.database import DatabaseManager, Artist, Track, ContactAttempt, OutreachLog
 from config.settings import settings
 
 # Initialize Flask app
@@ -50,7 +53,27 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 # Initialize services
 rate_limiter = RateLimitManager()
 pipeline = LeadAggregationPipeline(rate_limiter)
+
+# Global database manager for connection reuse
 db_manager = DatabaseManager()
+
+# Utility function for safe database operations
+def safe_db_operation(operation_func, *args, **kwargs):
+    """Safely execute database operations with proper error handling"""
+    try:
+        if not db_manager.session:
+            db_manager._setup_database()
+        return operation_func(*args, **kwargs)
+    except SQLAlchemyError as e:
+        print(f"Database error: {e}")
+        if db_manager.session:
+            db_manager.session.rollback()
+        raise
+    except Exception as e:
+        print(f"Unexpected error in database operation: {e}")
+        if db_manager.session:
+            db_manager.session.rollback()
+        raise
 
 # Error handlers
 @app.errorhandler(404)
@@ -64,6 +87,34 @@ def internal_error(error):
 @app.errorhandler(413)
 def file_too_large(error):
     return jsonify({'error': 'File too large. Maximum size is 16MB.'}), 413
+
+# ROOT WELCOME MESSAGE
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint with welcome message"""
+    return jsonify({
+        'service': 'ISRC Analyzer API',
+        'message': 'Welcome to ISRC Analysis and Lead Generation Tool',
+        'description': 'Transforming music industry data into actionable insights',
+        'company': 'Precise Digital',
+        'version': '1.0.0',
+        'api_documentation': '/api/',
+        'health_check': '/api/health',
+        'endpoints': {
+            'analyze_single_isrc': 'POST /api/analyze-isrc',
+            'bulk_analysis': 'POST /api/analyze-bulk',
+            'get_leads': 'GET /api/leads',
+            'youtube_integration': 'POST /api/youtube/test'
+        },
+        'integrations': {
+            'spotify': '✅' if os.getenv('SPOTIFY_CLIENT_ID') else '❌ Not configured',
+            'youtube': '✅' if os.getenv('YOUTUBE_API_KEY') else '❌ Not configured',
+            'lastfm': '✅' if os.getenv('LASTFM_API_KEY') else '⚠️  Optional',
+            'musicbrainz': '✅ Always available'
+        },
+        'status': 'operational',
+        'timestamp': datetime.utcnow().isoformat()
+    })
 
 # API Documentation root endpoint
 @app.route('/api/', methods=['GET'])
@@ -99,11 +150,23 @@ def api_documentation():
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint for separate service deployment"""
+    # Test database connection
+    db_connected = True
+    try:
+        # Simple query to test connection
+        if db_manager.session:
+            db_manager.session.execute(text("SELECT 1"))
+        else:
+            db_connected = False
+    except Exception as e:
+        print(f"Database health check failed: {e}")
+        db_connected = False
+    
     return jsonify({
-        'status': 'healthy',
+        'status': 'healthy' if db_connected else 'degraded',
         'service': 'isrc-analyzer-api',
         'deployment_type': 'separate_backend',
-        'database_connected': True,  # Add actual DB check if needed
+        'database_connected': db_connected,
         'timestamp': datetime.utcnow().isoformat(),
         'version': '1.0.0',
         'youtube_integration': 'enabled' if os.getenv('YOUTUBE_API_KEY') else 'disabled'
@@ -159,7 +222,7 @@ def analyze_isrc():
         force_refresh = data.get('force_refresh', False)
         include_youtube = data.get('include_youtube', True)  # YouTube toggle
         
-        if not force_refresh and save_to_db:
+        if not force_refresh and save_to_db and db_manager.session:
             # Check if we have recent data for this ISRC
             try:
                 existing_track = db_manager.session.query(Track).filter_by(isrc=isrc).first()
@@ -362,6 +425,9 @@ def get_leads():
         if limit > 1000:
             limit = 1000
         
+        if not db_manager.session:
+            return jsonify({'error': 'Database connection not available'}), 500
+        
         # Build query
         query = db_manager.session.query(Artist)
         
@@ -493,6 +559,9 @@ def export_leads():
         data = request.get_json() or {}
         filters = data.get('filters', {})
         
+        if not db_manager.session:
+            return jsonify({'error': 'Database connection not available'}), 500
+        
         # Get leads with filters (no pagination for export)
         query = db_manager.session.query(Artist)
         
@@ -597,6 +666,9 @@ def export_leads():
 def get_artist(artist_id):
     """Get detailed information for a specific artist including YouTube data"""
     try:
+        if not db_manager.session:
+            return jsonify({'error': 'Database connection not available'}), 500
+        
         artist = db_manager.session.query(Artist).filter_by(id=artist_id).first()
         
         if not artist:
@@ -606,7 +678,6 @@ def get_artist(artist_id):
         tracks = db_manager.session.query(Track).filter_by(artist_id=artist_id).all()
         
         # Get contact attempts
-        from config.database import ContactAttempt
         contacts = db_manager.session.query(ContactAttempt).filter_by(artist_id=artist_id).all()
         
         # Safe datetime access
@@ -701,6 +772,9 @@ def update_outreach_status(artist_id):
         if status not in valid_statuses:
             return jsonify({'error': f'Invalid status. Must be one of: {valid_statuses}'}), 400
         
+        if not db_manager.session:
+            return jsonify({'error': 'Database connection not available'}), 500
+        
         artist = db_manager.session.query(Artist).filter_by(id=artist_id).first()
         
         if not artist:
@@ -713,7 +787,6 @@ def update_outreach_status(artist_id):
         # Log the outreach attempt if notes provided
         notes = data.get('notes')
         if notes:
-            from config.database import OutreachLog
             outreach_log = OutreachLog(
                 artist_id=artist_id,
                 contact_date=datetime.utcnow(),
@@ -732,7 +805,8 @@ def update_outreach_status(artist_id):
         })
         
     except Exception as e:
-        db_manager.session.rollback()
+        if db_manager.session:
+            db_manager.session.rollback()
         print(f"Error in update_outreach_status: {e}")
         return jsonify({'error': f'Failed to update outreach status: {str(e)}'}), 500
 
@@ -813,6 +887,9 @@ def get_youtube_opportunities():
 def refresh_artist_youtube_data(artist_id):
     """Refresh YouTube data for a specific artist"""
     try:
+        if not db_manager.session:
+            return jsonify({'error': 'Database connection not available'}), 500
+        
         artist = db_manager.session.query(Artist).filter_by(id=artist_id).first()
         if not artist:
             return jsonify({'error': 'Artist not found'}), 404
@@ -896,9 +973,8 @@ def get_youtube_stats():
 
 if __name__ == '__main__':
     # Initialize database
-    from config.database import init_db, run_youtube_migration_if_needed
+    from config.database import init_db
     init_db()
-    run_youtube_migration_if_needed()
     
     # Run the app
     app.run(
