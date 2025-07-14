@@ -1,4 +1,4 @@
-# requirements.txt - Render-optimized for ISRC Analyzer (FIXED for Render deployment)
+# requirements.txt - Render-optimized for ISRC Analyzer (FIXED for deployment)
 
 # Core Flask and web framework
 Flask==3.0.0
@@ -57,8 +57,8 @@ validators==0.22.0
 # Monitoring and logging
 structlog==23.2.0
 
-# Security
-cryptography==41.0.8
+# Security - FIXED: Use available version
+cryptography==41.0.7
 
 # Production server
 gunicorn==21.2.0
