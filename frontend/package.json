@@ -17,11 +17,12 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-http://localhost:5000/api} react-scripts build",
+    "build": "react-scripts build",
     "build:production": "REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-https://isrc-analyzer-api.onrender.com/api} react-scripts build",
     "build:development": "REACT_APP_API_BASE_URL=http://localhost:5000/api react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "clean": "rm -rf node_modules package-lock.json && npm install"
   },
   "eslintConfig": {
     "extends": [

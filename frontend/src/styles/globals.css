@@ -1,7 +1,6 @@
-/* Prism Analytics Engine - Global Styles */
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+/* Prism Analytics Engine - Global Styles (Tailwind CSS v4 Compatible) */
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
 
 /* Prism Brand Typography */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -297,11 +296,6 @@ body {
   animation: shimmer 2s infinite;
 }
 
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
 /* Stat Cards */
 .prism-stat-card {
   background: var(--prism-white);
@@ -346,21 +340,8 @@ body {
   animation: spin 1s ease-in-out infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .prism-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: .5;
-  }
 }
 
 /* Navigation Styles */
@@ -455,6 +436,37 @@ body {
   box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
 }
 
+/* Custom Animations */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-prism-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-prism-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .prism-wordmark {
@@ -477,32 +489,6 @@ body {
   .prism-table-cell {
     padding: 0.75rem 1rem;
     font-size: var(--prism-text-xs);
-  }
-}
-
-/* Dark Mode Support (for future implementation) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --prism-black: #FFFFFF;
-    --prism-white: #1A1A1A;
-    --prism-light-gray: #333333;
-    --prism-medium-gray: #CCCCCC;
-    --prism-charcoal-gray: #E5E5E5;
-  }
-}
-
-/* Print Styles */
-@media print {
-  .prism-nav-item,
-  .prism-button {
-    color: var(--prism-black) !important;
-    background: transparent !important;
-    border: 1px solid var(--prism-black) !important;
-  }
-  
-  .prism-card {
-    box-shadow: none !important;
-    border: 1px solid var(--prism-black) !important;
   }
 }
 

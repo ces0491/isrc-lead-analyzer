@@ -1,10 +1,14 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: isrc-analyzer-postgres
-    runtime: postgres
+# Corrected render.yaml for ISRC Analyzer deployment
+
+# PostgreSQL Database (Render Managed)
+databases:
+  - name: isrc-analyzer-postgres
+    databaseName: isrcdb
+    user: isrcuser
     plan: starter
-    
+
+# Services
+services:
   # Backend API Service  
   - type: web
     name: isrc-analyzer-api

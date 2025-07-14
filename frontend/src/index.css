@@ -1,4 +1,8 @@
-@import "tailwindcss";
+/* ISRC Analyzer Frontend Styles - Tailwind CSS v4 Compatible */
+
+/* Tailwind CSS v4 Imports - UPDATED SYNTAX */
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
 
 /* Custom styles for ISRC Analyzer - Prism Analytics Engine */
 body {
