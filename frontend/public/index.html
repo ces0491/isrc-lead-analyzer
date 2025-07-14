@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1A1A1A" />
+    <meta name="description" content="Prism Analytics Engine by Precise Digital - Transforming music industry data into actionable insights for independent artists and labels" />
+    <meta name="keywords" content="prism, analytics, music industry, lead generation, youtube integration, precise digital, independent artists, music data" />
+    <meta name="author" content="Precise Digital" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Prism Analytics Engine - Music Industry Lead Generation" />
+    <meta property="og:description" content="Transform music industry data into actionable insights with YouTube integration and comprehensive lead scoring" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://precise.digital" />
+    <meta property="og:site_name" content="Prism Analytics Engine" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Prism Analytics Engine" />
+    <meta name="twitter:description" content="Music industry lead generation with YouTube integration" />
+    
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/favicon.ico" />
+    
+    <!-- Web Manifest -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Preconnect to External Resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Prism Brand Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Page Title -->
+    <title>Prism Analytics Engine - Transforming Music Data into Actionable Insights</title>
+    
+    <!-- Prism Brand CSS Variables -->
+    <style>
+        :root {
+            --prism-black: #1A1A1A;
+            --prism-red: #E50914;
+            --prism-charcoal-gray: #333333;
+            --prism-white: #FFFFFF;
+            --prism-light-gray: #F8F9FA;
+            --prism-medium-gray: #666666;
+        }
+        
+        /* Loading Screen Styles */
+        .prism-loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--prism-white);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        }
+        
+        .prism-logo-loading {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 2rem;
+            animation: prism-pulse 2s ease-in-out infinite;
+        }
+        
+        .prism-wordmark-loading {
+            font-size: 2rem;
+            font-weight: 400;
+            letter-spacing: 0.3em;
+            color: var(--prism-black);
+            margin-bottom: 1rem;
+        }
+        
+        .prism-subtitle-loading {
+            font-size: 0.875rem;
+            color: var(--prism-medium-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 2rem;
+        }
+        
+        .prism-spinner {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--prism-light-gray);
+            border-top: 2px solid var(--prism-red);
+            border-radius: 50%;
+            animation: prism-spin 1s linear infinite;
+        }
+        
+        @keyframes prism-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        
+        @keyframes prism-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Hide loading screen when React app loads */
+        .prism-app-loaded .prism-loading-screen {
+            display: none;
+        }
+        
+        /* No JavaScript fallback */
+        .prism-no-js {
+            display: none;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: var(--prism-white);
+            color: var(--prism-black);
+        }
+        
+        #root {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <!-- Prism Loading Screen -->
+    <div class="prism-loading-screen" id="prism-loading">
+        <!-- Prism Logo SVG -->
+        <svg class="prism-logo-loading" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <!-- Musical notation lines -->
+            <g opacity="0.6">
+                <line x1="10" y1="20" x2="35" y2="20" stroke="#1A1A1A" stroke-width="1"/>
+                <line x1="10" y1="25" x2="35" y2="25" stroke="#1A1A1A" stroke-width="1"/>
+                <line x1="10" y1="30" x2="35" y2="30" stroke="#1A1A1A" stroke-width="1"/>
+                <circle cx="15" cy="22.5" r="1.5" fill="#1A1A1A"/>
+                <circle cx="25" cy="27.5" r="1.5" fill="#1A1A1A"/>
+            </g>
+            
+            <!-- Triangular prism -->
+            <path d="M40 25 L65 40 L65 65 L40 50 Z" fill="#1A1A1A" stroke="#E50914" stroke-width="2"/>
+            <path d="M40 25 L60 10 L85 25 L65 40 Z" fill="#333333" stroke="#E50914" stroke-width="2"/>
+            <path d="M65 40 L85 25 L85 50 L65 65 Z" fill="#666666" stroke="#E50914" stroke-width="2"/>
+            
+            <!-- Sin wave output -->
+            <path d="M85 25 Q90 20 95 25 Q100 30 105 25" stroke="#E50914" stroke-width="2" fill="none"/>
+            <path d="M85 35 Q90 30 95 35 Q100 40 105 35" stroke="#E50914" stroke-width="2" fill="none"/>
+            <path d="M85 45 Q90 40 95 45 Q100 50 105 45" stroke="#E50914" stroke-width="2" fill="none"/>
+        </svg>
+        
+        <div class="prism-wordmark-loading">P R I S M</div>
+        <div class="prism-subtitle-loading">Analytics Engine</div>
+        <div class="prism-spinner"></div>
+    </div>
+    
+    <!-- No JavaScript Fallback -->
+    <noscript>
+        <div class="prism-no-js" style="display: block; padding: 2rem; text-align: center; background: var(--prism-light-gray);">
+            <h1 style="color: var(--prism-black); font-size: 2rem; margin-bottom: 1rem; letter-spacing: 0.3em;">P R I S M</h1>
+            <h2 style="color: var(--prism-red); font-size: 1.25rem; margin-bottom: 1rem;">Analytics Engine</h2>
+            <p style="color: var(--prism-medium-gray); margin-bottom: 1rem;">
+                You need to enable JavaScript to run the Prism Analytics Engine.
+            </p>
+            <p style="color: var(--prism-charcoal-gray); font-size: 0.875rem;">
+                Prism transforms music industry data into actionable insights for independent artists and labels.
+            </p>
+        </div>
+    </noscript>
+    
+    <!-- React App Root -->
+    <div id="root"></div>
+    
+    <!-- Prism Analytics Script -->
+    <script>
+        // Hide loading screen when React app mounts
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const loadingScreen = document.getElementById('prism-loading');
+                const body = document.body;
+                
+                if (loadingScreen) {
+                    loadingScreen.style.opacity = '0';
+                    loadingScreen.style.transition = 'opacity 0.3s ease-out';
+                    
+                    setTimeout(function() {
+                        body.classList.add('prism-app-loaded');
+                    }, 300);
+                }
+            }, 1000); // Show loading for at least 1 second for branding
+        });
+        
+        // Service Worker Registration (for future PWA features)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js')
+                .then(function(registration) {
+                    console.log('Prism SW registered: ', registration);
+                })
+                .catch(function(registrationError) {
+                    console.log('Prism SW registration failed: ', registrationError);
+                });
+            });
+        }
+        
+        // Global error handling
+        window.addEventListener('error', function(event) {
+            console.error('Prism Analytics Engine Error:', event.error);
+        });
+        
+        // Global analytics tracking (placeholder for future implementation)
+        window.prismAnalytics = {
+            track: function(event, properties) {
+                if (window.gtag) {
+                    window.gtag('event', event, properties);
+                }
+                console.log('Prism Analytics:', event, properties);
+            }
+        };
+    </script>
+</body>
+</html>
