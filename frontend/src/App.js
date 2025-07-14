@@ -52,58 +52,49 @@ const apiCall = async (endpoint, options = {}) => {
   return response.json();
 };
 
-// ISRC Analyzer Logo Component (updated from Prism)
-const ISRCAnalyzerLogo = ({ className = "h-8 w-8" }) => (
+// Prism Analytics Engine Logo Component
+const PrismLogo = ({ className = "h-8 w-8" }) => (
   <div className={`${className} flex items-center justify-center`}>
-    <svg viewBox="0 0 100 100" className="w-full h-full">
-      {/* Musical notation lines */}
-      <g className="opacity-60">
-        <line x1="10" y1="20" x2="35" y2="20" stroke="#1A1A1A" strokeWidth="1"/>
-        <line x1="10" y1="25" x2="35" y2="25" stroke="#1A1A1A" strokeWidth="1"/>
-        <line x1="10" y1="30" x2="35" y2="30" stroke="#1A1A1A" strokeWidth="1"/>
-        <circle cx="15" cy="22.5" r="1.5" fill="#1A1A1A"/>
-        <circle cx="25" cy="27.5" r="1.5" fill="#1A1A1A"/>
+    <svg viewBox="0 0 100 40" className="w-full h-full">
+      {/* Musical notation lines - representing raw music data */}
+      <g>
+        <line x1="2" y1="12" x2="18" y2="12" stroke="#1A1A1A" strokeWidth="1"/>
+        <line x1="2" y1="16" x2="18" y2="16" stroke="#1A1A1A" strokeWidth="1"/>
+        <line x1="2" y1="20" x2="18" y2="20" stroke="#1A1A1A" strokeWidth="1"/>
+        <line x1="2" y1="24" x2="18" y2="24" stroke="#1A1A1A" strokeWidth="1"/>
+        <line x1="2" y1="28" x2="18" y2="28" stroke="#1A1A1A" strokeWidth="1"/>
+        {/* Musical notes */}
+        <circle cx="6" cy="14" r="1" fill="#1A1A1A"/>
+        <circle cx="12" cy="22" r="1" fill="#1A1A1A"/>
+        <circle cx="16" cy="18" r="1" fill="#1A1A1A"/>
       </g>
       
-      {/* Triangular prism (keeping Prism visual identity) */}
-      <path 
-        d="M40 25 L65 40 L65 65 L40 50 Z" 
-        fill="#1A1A1A" 
-        stroke="#E50914" 
-        strokeWidth="2"
-      />
-      <path 
-        d="M40 25 L60 10 L85 25 L65 40 Z" 
-        fill="#333333" 
-        stroke="#E50914" 
-        strokeWidth="2"
-      />
-      <path 
-        d="M65 40 L85 25 L85 50 L65 65 Z" 
-        fill="#666666" 
-        stroke="#E50914" 
-        strokeWidth="2"
-      />
+      {/* Triangular prism - clean geometric design */}
+      <g>
+        {/* Main triangle - solid black */}
+        <path 
+          d="M30 28 L40 12 L50 28 Z" 
+          fill="#1A1A1A" 
+        />
+        {/* Red accent line through center */}
+        <line x1="35" y1="20" x2="45" y2="20" stroke="#E50914" strokeWidth="2"/>
+      </g>
       
-      {/* Sin wave output */}
-      <path 
-        d="M85 25 Q90 20 95 25 Q100 30 105 25" 
-        stroke="#E50914" 
-        strokeWidth="2" 
-        fill="none"
-      />
-      <path 
-        d="M85 35 Q90 30 95 35 Q100 40 105 35" 
-        stroke="#E50914" 
-        strokeWidth="2" 
-        fill="none"
-      />
-      <path 
-        d="M85 45 Q90 40 95 45 Q100 50 105 45" 
-        stroke="#E50914" 
-        strokeWidth="2" 
-        fill="none"
-      />
+      {/* Sin wave output - representing refined insights */}
+      <g>
+        <path 
+          d="M60 16 Q65 12 70 16 Q75 20 80 16 Q85 12 90 16 Q95 20 98 16" 
+          stroke="#E50914" 
+          strokeWidth="2" 
+          fill="none"
+        />
+        <path 
+          d="M60 24 Q65 20 70 24 Q75 28 80 24 Q85 20 90 24 Q95 28 98 24" 
+          stroke="#E50914" 
+          strokeWidth="2" 
+          fill="none"
+        />
+      </g>
     </svg>
   </div>
 );
@@ -140,7 +131,7 @@ const Dashboard = ({ systemStatus }) => {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-wide">DASHBOARD</h2>
-        <p className="text-gray-600">Overview of your lead generation activities</p>
+        <p className="text-gray-600">Analytics overview and lead generation insights</p>
       </div>
 
       {/* Stats Grid */}
@@ -307,7 +298,7 @@ const ISRCAnalyzer = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-wide">ISRC ANALYZER</h2>
-        <p className="text-gray-600">Analyze individual tracks and discover lead opportunities</p>
+        <p className="text-gray-600">Advanced track analysis and lead discovery</p>
       </div>
 
       {/* Input Section */}
@@ -480,9 +471,6 @@ const ISRCAnalyzer = () => {
   );
 };
 
-// Continue with other components (BulkProcessor, LeadsList, etc.) 
-// but with updated branding and API calls...
-
 const App = () => {
   const [systemStatus, setSystemStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -506,7 +494,6 @@ const App = () => {
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
     { id: 'analyze', label: 'ISRC Analyzer', icon: Search, component: ISRCAnalyzer },
-    // Add other components here...
   ];
 
   const renderActiveComponent = () => {
@@ -522,7 +509,7 @@ const App = () => {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading ISRC Analyzer...</p>
+          <p className="text-gray-600">Loading Prism Analytics Engine...</p>
         </div>
       </div>
     );
@@ -535,16 +522,16 @@ const App = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <ISRCAnalyzerLogo className="h-10 w-10" />
+              <PrismLogo className="h-12 w-20" />
               <div>
-                <h1 className="text-xl font-bold text-gray-900 tracking-wider">
-                  ISRC ANALYZER
-                  <span className="text-xs text-gray-600 ml-2 font-normal tracking-normal">
-                    BY PRECISE DIGITAL
+                <h1 className="text-xl font-bold text-gray-900 tracking-widest">
+                  P R I S M
+                  <span className="text-xs text-gray-600 ml-3 font-normal tracking-normal">
+                    ANALYTICS ENGINE
                   </span>
                 </h1>
                 <p className="text-sm text-gray-600">
-                  Lead generation for independent music services
+                  Transforming music data into actionable insights
                 </p>
               </div>
             </div>
@@ -627,15 +614,18 @@ const App = () => {
             </div>
           )}
 
-          {/* ISRC Analyzer Branding Footer */}
+          {/* Prism Branding Footer */}
           <div className="absolute bottom-4 left-4 right-4">
             <div className="text-center">
-              <ISRCAnalyzerLogo className="h-6 w-6 mx-auto mb-2 opacity-60" />
-              <p className="text-xs text-gray-700 tracking-wider">
-                PRECISE DIGITAL
+              <PrismLogo className="h-8 w-16 mx-auto mb-2 opacity-60" />
+              <p className="text-xs text-gray-700 tracking-widest">
+                P R I S M
               </p>
-              <p className="text-xs text-gray-500">
-                ISRC Analyzer v1.0
+              <p className="text-xs text-gray-500 tracking-wide">
+                Analytics Engine v1.0
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                by Precise Digital
               </p>
             </div>
           </div>
