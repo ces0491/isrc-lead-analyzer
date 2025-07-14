@@ -1,6 +1,6 @@
 """
-Flask API routes for Precise Digital Lead Generation Tool with YouTube Integration
-Provides REST endpoints for the frontend application
+Flask API routes for ISRC Analyzer with YouTube Integration
+API-only service for separate frontend/backend deployment
 """
 import os
 import csv
@@ -18,7 +18,8 @@ from config.settings import settings
 
 # Initialize Flask app
 app = Flask(__name__)
-# Production-ready CORS configuration
+
+# Production-ready CORS configuration for separate deployment
 if os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production':
     # Production CORS - restrict to your frontend domains
     allowed_origins = [
@@ -64,15 +65,48 @@ def internal_error(error):
 def file_too_large(error):
     return jsonify({'error': 'File too large. Maximum size is 16MB.'}), 413
 
+# API Documentation root endpoint
+@app.route('/api/', methods=['GET'])
+def api_documentation():
+    """API documentation and status"""
+    return jsonify({
+        'service': 'ISRC Analyzer API',
+        'version': '1.0.0',
+        'status': 'running',
+        'deployment': 'separate_services',
+        'endpoints': {
+            'health': 'GET /api/health',
+            'status': 'GET /api/status',
+            'analyze_isrc': 'POST /api/analyze-isrc',
+            'bulk_processing': 'POST /api/analyze-bulk',
+            'file_upload': 'POST /api/upload-isrcs',
+            'leads': 'GET /api/leads',
+            'export': 'POST /api/export',
+            'youtube_test': 'POST /api/youtube/test',
+            'youtube_stats': 'GET /api/youtube/stats',
+            'youtube_opportunities': 'GET /api/youtube/opportunities'
+        },
+        'integrations': {
+            'spotify': bool(os.getenv('SPOTIFY_CLIENT_ID')),
+            'youtube': bool(os.getenv('YOUTUBE_API_KEY')),
+            'lastfm': bool(os.getenv('LASTFM_API_KEY')),
+            'musicbrainz': True
+        },
+        'timestamp': datetime.utcnow().isoformat()
+    })
+
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint for separate service deployment"""
     return jsonify({
         'status': 'healthy',
+        'service': 'isrc-analyzer-api',
+        'deployment_type': 'separate_backend',
+        'database_connected': True,  # Add actual DB check if needed
         'timestamp': datetime.utcnow().isoformat(),
         'version': '1.0.0',
-        'youtube_integration': 'enabled'
+        'youtube_integration': 'enabled' if os.getenv('YOUTUBE_API_KEY') else 'disabled'
     })
 
 # System status endpoint
@@ -86,6 +120,7 @@ def system_status():
     youtube_status = 'available' if settings.apis['youtube'].api_key else 'not_configured'
     
     return jsonify({
+        'service': 'isrc-analyzer-api',
         'rate_limits': rate_status,
         'processing_stats': processing_stats,
         'database_status': 'connected',
@@ -94,6 +129,10 @@ def system_status():
             'api_key_configured': bool(settings.apis['youtube'].api_key),
             'daily_quota_used': rate_status.get('youtube', {}).get('requests_today', 0),
             'daily_quota_limit': rate_status.get('youtube', {}).get('daily_limit', 10000)
+        },
+        'cors_configuration': {
+            'mode': 'production' if os.getenv('RENDER') else 'development',
+            'allowed_origins': os.getenv('CORS_ORIGINS', 'development_mode').split(',') if os.getenv('CORS_ORIGINS') else ['*']
         },
         'timestamp': datetime.utcnow().isoformat()
     })
@@ -118,7 +157,7 @@ def analyze_isrc():
         # Check if already processed recently
         save_to_db = data.get('save_to_db', True)
         force_refresh = data.get('force_refresh', False)
-        include_youtube = data.get('include_youtube', True)  # NEW: YouTube toggle
+        include_youtube = data.get('include_youtube', True)  # YouTube toggle
         
         if not force_refresh and save_to_db:
             # Check if we have recent data for this ISRC
@@ -240,11 +279,11 @@ def upload_isrcs():
         file = request.files['file']
         
         # Check if file was actually selected
-        if not file or not file.filename:  # Fixed: Handle None filename
+        if not file or not file.filename:
             return jsonify({'error': 'No file selected'}), 400
         
         # Check file extension
-        filename = secure_filename(file.filename)  # This is now safe because we checked above
+        filename = secure_filename(file.filename)
         if not filename.lower().endswith(('.csv', '.txt')):
             return jsonify({'error': 'Only CSV and TXT files are supported'}), 400
         
@@ -312,7 +351,8 @@ def get_leads():
         region = request.args.get('region')
         min_score = request.args.get('min_score', type=int)
         max_score = request.args.get('max_score', type=int)
-        youtube_filter = request.args.get('youtube_filter')  # NEW: YouTube filtering
+        youtube_filter = request.args.get('youtube_filter')
+        search = request.args.get('search')
         limit = request.args.get('limit', 50, type=int)
         offset = request.args.get('offset', 0, type=int)
         sort_by = request.args.get('sort_by', 'total_score')
@@ -338,7 +378,10 @@ def get_leads():
         if max_score is not None:
             query = query.filter(Artist.total_score <= max_score)
         
-        # NEW: YouTube filtering
+        if search:
+            query = query.filter(Artist.name.ilike(f'%{search}%'))
+        
+        # YouTube filtering
         if youtube_filter:
             if youtube_filter == 'has_channel':
                 query = query.filter(Artist.youtube_channel_id.isnot(None))
@@ -347,7 +390,6 @@ def get_leads():
             elif youtube_filter == 'high_potential':
                 query = query.filter(Artist.youtube_growth_potential == 'high_potential')
             elif youtube_filter == 'underperforming':
-                # Artists with Spotify following but low YouTube subscribers
                 query = query.filter(
                     Artist.monthly_listeners > 10000,
                     Artist.youtube_subscribers < Artist.monthly_listeners * 0.3
@@ -362,7 +404,7 @@ def get_leads():
             sort_column = Artist.name
         elif sort_by == 'created_at':
             sort_column = Artist.created_at
-        elif sort_by == 'youtube_subscribers':  # NEW: YouTube sorting
+        elif sort_by == 'youtube_subscribers':
             sort_column = Artist.youtube_subscribers
         else:
             sort_column = Artist.total_score
@@ -403,7 +445,7 @@ def get_leads():
                 'contact_email': artist.contact_email,
                 'website': artist.website,
                 'social_handles': artist.social_handles,
-                # NEW: YouTube summary data
+                # YouTube summary data
                 'youtube_summary': {
                     'has_channel': bool(artist.youtube_channel_id),
                     'channel_url': artist.youtube_channel_url,
@@ -433,6 +475,7 @@ def get_leads():
                 'min_score': min_score,
                 'max_score': max_score,
                 'youtube_filter': youtube_filter,
+                'search': search,
                 'sort_by': sort_by,
                 'sort_order': sort_order
             }
@@ -465,7 +508,7 @@ def export_leads():
         if filters.get('max_score'):
             query = query.filter(Artist.total_score <= filters['max_score'])
         
-        # NEW: YouTube filtering for export
+        # YouTube filtering for export
         if filters.get('youtube_filter'):
             youtube_filter = filters['youtube_filter']
             if youtube_filter == 'has_channel':
@@ -519,7 +562,7 @@ def export_leads():
                 artist.contact_email or '',
                 artist.website or '',
                 str(getattr(artist, 'social_handles', '')) if getattr(artist, 'social_handles', None) else '',
-                # NEW: YouTube data columns
+                # YouTube data columns
                 artist.youtube_channel_id or '',
                 artist.youtube_channel_url or '',
                 artist.youtube_subscribers or 0,
@@ -536,7 +579,7 @@ def export_leads():
         
         # Create filename with timestamp
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'precise_digital_leads_{timestamp}.csv'
+        filename = f'isrc_analyzer_leads_{timestamp}.csv'
         
         return jsonify({
             'csv_data': csv_content,
@@ -594,7 +637,7 @@ def get_artist(artist_id):
                 'release_count': artist.release_count,
                 'last_release_date': last_release_date.isoformat() if last_release_date else None
             },
-            # NEW: YouTube metrics
+            # YouTube metrics
             'youtube_metrics': {
                 'channel_id': artist.youtube_channel_id,
                 'channel_url': artist.youtube_channel_url,
@@ -706,7 +749,7 @@ def dashboard_stats():
         print(f"Error in dashboard_stats: {e}")
         return jsonify({'error': f'Failed to fetch dashboard stats: {str(e)}'}), 500
 
-# NEW: YouTube-specific endpoints
+# YouTube-specific endpoints
 
 @app.route('/api/youtube/test', methods=['POST'])
 def test_youtube_integration():

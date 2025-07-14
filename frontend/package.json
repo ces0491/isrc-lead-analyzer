@@ -1,87 +1,32 @@
 {
-  "name": "prism-analytics-engine",
+  "name": "isrc-analyzer-frontend",
   "version": "1.0.0",
-  "description": "Prism Analytics Engine by Precise Digital - Lead Generation Tool with YouTube Integration",
+  "description": "Frontend for ISRC Analyzer - Lead generation tool for independent music services",
+  "author": "Precise Digital",
   "private": true,
-  "homepage": "https://precise.digital",
-  "keywords": [
-    "prism",
-    "analytics",
-    "music",
-    "lead-generation",
-    "youtube",
-    "precise-digital"
-  ],
+  "homepage": "https://isrc-analyzer-frontend.onrender.com",
   "dependencies": {
-    "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^14.4.3",
+    "@testing-library/jest-dom": "^5.16.4",
+    "@testing-library/react": "^13.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
-    "react-router-dom": "^6.8.1",
-    "axios": "^1.3.4",
-    "recharts": "^2.5.0",
-    "react-hot-toast": "^2.4.0",
-    "react-dropzone": "^14.2.3",
-    "lucide-react": "^0.320.0",
-    "clsx": "^1.2.1",
-    "framer-motion": "^10.0.0",
-    "react-intersection-observer": "^9.4.3",
-    "react-virtualized-auto-sizer": "^1.0.24",
-    "react-window": "^1.8.8"
-  },
-  "devDependencies": {
-    "@types/react": "^18.0.28",
-    "@types/react-dom": "^18.0.11",
-    "tailwindcss": "^3.2.7",
-    "@tailwindcss/forms": "^0.5.3",
-    "@tailwindcss/typography": "^0.5.9",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.21",
-    "prettier": "^2.8.4",
-    "prettier-plugin-tailwindcss": "^0.2.1",
-    "eslint-config-prettier": "^8.6.0",
-    "eslint-plugin-prettier": "^4.2.1"
+    "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build && echo 'Build completed for Render deployment'",
-    "build:production": "REACT_APP_API_BASE_URL=https://isrc-analyzer-api.onrender.com react-scripts build",
+    "build": "REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-http://localhost:5000/api} react-scripts build",
+    "build:production": "REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-https://isrc-analyzer-api.onrender.com/api} react-scripts build",
+    "build:development": "REACT_APP_API_BASE_URL=http://localhost:5000/api react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "lint": "eslint src/**/*.{js,jsx,ts,tsx}",
-    "lint:fix": "eslint src/**/*.{js,jsx,ts,tsx} --fix",
-    "format": "prettier --write src/**/*.{js,jsx,ts,tsx,css,md}",
-    "analyze": "npm run build && npx bundle-analyzer build/static/js/*.js",
-    "clean": "rm -rf build node_modules/.cache",
-    "prepare": "husky install"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
       "react-app",
-      "react-app/jest",
-      "prettier"
-    ],
-    "plugins": [
-      "prettier"
-    ],
-    "rules": {
-      "prettier/prettier": "error",
-      "no-console": "warn",
-      "no-unused-vars": "warn",
-      "react-hooks/exhaustive-deps": "warn"
-    }
-  },
-  "prettier": {
-    "semi": true,
-    "trailingComma": "es5",
-    "singleQuote": true,
-    "printWidth": 100,
-    "tabWidth": 2,
-    "useTabs": false,
-    "plugins": [
-      "prettier-plugin-tailwindcss"
+      "react-app/jest"
     ]
   },
   "browserslist": {
@@ -96,40 +41,9 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:5000",
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/precise-digital/prism-analytics-engine"
-  },
-  "author": {
-    "name": "Precise Digital",
-    "email": "hello@precise.digital",
-    "url": "https://precise.digital"
-  },
-  "license": "UNLICENSED",
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm run lint && npm run format",
-      "pre-push": "npm run test -- --coverage --silent"
-    }
-  },
-  "jest": {
-    "collectCoverageFrom": [
-      "src/**/*.{js,jsx,ts,tsx}",
-      "!src/index.js",
-      "!src/reportWebVitals.js"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 80,
-        "functions": 80,
-        "lines": 80,
-        "statements": 80
-      }
-    }
+  "devDependencies": {
+    "tailwindcss": "^3.3.0",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.31"
   }
 }

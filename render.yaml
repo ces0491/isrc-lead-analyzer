@@ -1,5 +1,5 @@
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database Service
   - type: pserv
     name: isrc-analyzer-postgres
     env: node
@@ -29,17 +29,21 @@ services:
         sync: false
       - key: LASTFM_API_KEY
         sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://isrc-analyzer-frontend.onrender.com
     
-  # Frontend Static Site
+  # Frontend Static Service
   - type: web
     name: isrc-analyzer-frontend
     env: static
     plan: starter
     buildCommand: |
       cd frontend
-      npm ci
-      npm run build
+      npm ci --only=production
+      npm run build:production
     staticPublishPath: ./frontend/build
     envVars:
       - key: REACT_APP_API_BASE_URL
-        value: https://isrc-analyzer-api.onrender.com
+        value: https://isrc-analyzer-api.onrender.com/api
