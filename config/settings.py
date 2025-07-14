@@ -10,7 +10,7 @@ except ImportError:
         pass
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict, Any
 
 # Load environment variables
 load_dotenv()
@@ -161,3 +161,31 @@ settings = Settings()
 
 # Validate configuration on import
 settings.validate_required_keys()
+
+class ProductionConfig:
+    """Production configuration for Render deployment"""
+    
+    @property
+    def app(self) -> Dict[str, Any]:
+        return {
+            'host': '0.0.0.0',
+            'port': int(os.getenv('PORT', 5000)),
+            'debug': False,
+            'secret_key': os.getenv('SECRET_KEY', 'your-secret-key-here')
+        }
+    
+    @property 
+    def database_url(self) -> str:
+        """Get PostgreSQL URL from environment"""
+        db_url = os.getenv('DATABASE_URL')
+        if db_url and db_url.startswith('postgres://'):
+            db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        return db_url or 'sqlite:///data/leads.db'
+
+# Add environment detection
+def get_config():
+    """Get configuration based on environment"""
+    if os.getenv('RENDER'):
+        return ProductionConfig()
+    else:
+        return settings  # Your existing development config

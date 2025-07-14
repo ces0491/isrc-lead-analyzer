@@ -6,10 +6,27 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
+def is_production():
+    """Check if running in production environment"""
+    return bool(os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production')
+
+def validate_production_config():
+    """Validate production configuration"""
+    if not is_production():
+        return True
+        
+    required_vars = ['DATABASE_URL']
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    
+    if missing_vars:
+        print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
+        return False
+    
+    print("✅ Production configuration validated")
+    return True
+
 def validate_startup_configuration():
-    """
-    Enhanced startup validation with YouTube integration checks
-    """
+    """Enhanced startup validation with production checks"""
     print("🔍 Validating startup configuration...")
     
     success = True
@@ -21,149 +38,109 @@ def validate_startup_configuration():
     else:
         print(f"✅ Python version: {sys.version}")
     
-    # 2. Check required directories
-    required_dirs = ['data', 'logs']
-    for dir_name in required_dirs:
-        if not os.path.exists(dir_name):
-            try:
-                os.makedirs(dir_name, exist_ok=True)
-                print(f"✅ Created directory: {dir_name}")
-            except Exception as e:
-                print(f"❌ Failed to create directory {dir_name}: {e}")
-                success = False
-        else:
-            print(f"✅ Directory exists: {dir_name}")
+    # 2. Validate production config if needed
+    if is_production():
+        if not validate_production_config():
+            success = False
     
-    # 3. Check environment variables (basic check)
+    # 3. Check required directories (only for development)
+    if not is_production():
+        required_dirs = ['data', 'logs']
+        for dir_name in required_dirs:
+            if not os.path.exists(dir_name):
+                try:
+                    os.makedirs(dir_name, exist_ok=True)
+                    print(f"✅ Created directory: {dir_name}")
+                except Exception as e:
+                    print(f"❌ Failed to create directory {dir_name}: {e}")
+                    success = False
+            else:
+                print(f"✅ Directory exists: {dir_name}")
+    
+    # 4. Check API credentials
     if not os.getenv('SPOTIFY_CLIENT_ID') or not os.getenv('SPOTIFY_CLIENT_SECRET'):
         print("⚠️  Warning: Spotify API credentials not configured")
         print("   Some features may not work without these keys.")
     else:
         print("✅ Spotify API credentials configured")
     
-    # 4. NEW: Check YouTube API configuration
+    # 5. Check YouTube API configuration
     youtube_api_key = os.getenv('YOUTUBE_API_KEY')
     if not youtube_api_key:
         print("⚠️  Warning: YouTube API key not configured")
         print("   YouTube integration will be disabled.")
-        print("   Set YOUTUBE_API_KEY environment variable to enable YouTube features.")
     else:
         print(f"✅ YouTube API key configured (...{youtube_api_key[-4:]})")
     
-    # 5. Check optional API keys
-    lastfm_key = os.getenv('LASTFM_API_KEY')
-    if lastfm_key:
-        print(f"✅ Last.fm API key configured (...{lastfm_key[-4:]})")
-    else:
-        print("⚠️  Optional: Last.fm API key not configured")
-    
-    if success:
-        print("✅ Basic startup validations passed!")
-    else:
-        print("❌ Some startup validations failed!")
-    
     return success
 
-def check_database_schema():
-    """
-    Check if database schema is up to date, including YouTube fields
-    """
-    print("🔍 Checking database schema...")
+def initialize_database():
+    """Initialize database with proper error handling"""
+    print("🔄 Initializing database...")
     
     try:
-        from config.database import check_youtube_migration_needed, migrate_youtube_fields
+        from config.database import init_db, run_youtube_migration_if_needed
         
-        if check_youtube_migration_needed():
-            print("🎥 YouTube fields not found in database")
-            print("🔄 Running YouTube schema migration...")
-            try:
-                migrate_youtube_fields()
-                print("✅ YouTube schema migration completed!")
-            except Exception as e:
-                print(f"❌ YouTube migration failed: {e}")
-                return False
-        else:
-            print("✅ Database schema is up to date (including YouTube fields)")
+        # Initialize database tables
+        init_db()
+        print("✅ Database tables initialized")
+        
+        # Run YouTube migration if needed
+        run_youtube_migration_if_needed()
+        print("✅ YouTube migration completed")
         
         return True
         
     except Exception as e:
-        print(f"⚠️  Could not check database schema: {e}")
-        print("Database will be initialized on first run")
-        return True
-
-def test_api_integrations():
-    """
-    Test API integrations to ensure they're working properly
-    """
-    print("🔍 Testing API integrations...")
-    
-    # Test imports first
-    try:
-        from src.integrations.base_client import musicbrainz_client, spotify_client, lastfm_client, youtube_client
-        print("✅ All API clients imported successfully")
-    except Exception as e:
-        print(f"❌ Failed to import API clients: {e}")
-        return False
-    
-    # Test YouTube client specifically
-    try:
-        from config.settings import settings
-        if settings.apis['youtube'].api_key:
-            print("✅ YouTube client initialized with API key")
+        print(f"❌ Database initialization failed: {e}")
+        if is_production():
+            # In production, log error but don't exit immediately
+            print("⚠️  Continuing in production mode - database may need manual setup")
+            return False
         else:
-            print("⚠️  YouTube client initialized without API key (features disabled)")
-    except Exception as e:
-        print(f"⚠️  YouTube client initialization warning: {e}")
-    
-    return True
+            # In development, exit on database errors
+            return False
 
 def print_startup_banner():
-    """
-    Print startup banner with YouTube integration status
-    """
+    """Print startup banner with environment info"""
+    env = "PRODUCTION" if is_production() else "DEVELOPMENT"
+    
     print("\n" + "🎵" * 60)
-    print("🎵  PRECISE DIGITAL LEAD GENERATION TOOL")
-    print("🎵  with YouTube Integration")
+    print("🎵  PRISM ANALYTICS ENGINE")
+    print(f"🎵  Environment: {env}")
+    print("🎵  by Precise Digital")
     print("🎵" + " " * 58 + "🎵")
     
     # Show integration status
     integrations = []
     
-    # Check each integration
-    try:
-        from config.settings import settings
+    if os.getenv('SPOTIFY_CLIENT_ID'):
+        integrations.append("✅ Spotify")
+    else:
+        integrations.append("❌ Spotify")
         
-        if os.getenv('SPOTIFY_CLIENT_ID'):
-            integrations.append("✅ Spotify")
-        else:
-            integrations.append("❌ Spotify")
-            
-        if settings.apis['youtube'].api_key:
-            integrations.append("✅ YouTube")
-        else:
-            integrations.append("⚠️  YouTube (disabled)")
-            
-        if settings.apis['lastfm'].api_key:
-            integrations.append("✅ Last.fm")
-        else:
-            integrations.append("⚠️  Last.fm (optional)")
+    if os.getenv('YOUTUBE_API_KEY'):
+        integrations.append("✅ YouTube")
+    else:
+        integrations.append("⚠️  YouTube (disabled)")
         
-        integrations.append("✅ MusicBrainz")
-        
-        print("🎵  Integrations:")
-        for integration in integrations:
-            print(f"🎵    {integration}")
-            
-    except Exception as e:
-        print(f"🎵  Integration status check failed: {e}")
+    if os.getenv('LASTFM_API_KEY'):
+        integrations.append("✅ Last.fm")
+    else:
+        integrations.append("⚠️  Last.fm (optional)")
     
+    integrations.append("✅ MusicBrainz")
+    
+    print("🎵  API Integrations:")
+    for integration in integrations:
+        print(f"🎵    {integration}")
+        
     print("🎵" + " " * 58 + "🎵")
     print("🎵" * 60)
     print()
 
 def main():
-    """Main function to start the application with YouTube integration"""
+    """Main function to start the application"""
     
     # Print banner first
     print_startup_banner()
@@ -172,85 +149,66 @@ def main():
     try:
         if not validate_startup_configuration():
             print("❌ Application startup failed due to configuration errors")
-            print("Please fix the configuration issues and try again.")
-            sys.exit(1)
+            if not is_production():
+                sys.exit(1)
     except Exception as e:
         print(f"⚠️  Warning: Startup validation failed: {e}")
-        print("Continuing anyway...")
     
-    # Check database schema
+    # Initialize database
     try:
-        if not check_database_schema():
-            print("❌ Database schema check failed")
-            print("Please check your database configuration.")
+        db_success = initialize_database()
+        if not db_success and not is_production():
+            print("❌ Database setup required for development")
             sys.exit(1)
     except Exception as e:
-        print(f"⚠️  Database schema check warning: {e}")
-    
-    # Initialize database if it doesn't exist
-    if not os.path.exists('data/leads.db'):
-        print("📊 Initializing database...")
-        os.makedirs('data', exist_ok=True)
-        try:
-            from config.database import init_db
-            init_db()
-            print("✅ Database initialized successfully!")
-        except Exception as e:
-            print(f"❌ Database initialization failed: {e}")
-            sys.exit(1)
-    
-    # Test API integrations
-    try:
-        if not test_api_integrations():
-            print("⚠️  Some API integrations may not work properly")
-    except Exception as e:
-        print(f"⚠️  API integration test warning: {e}")
+        print(f"⚠️  Database initialization warning: {e}")
     
     # Import and start Flask app
     try:
         from src.api.routes import app
         
-        print(f"🚀 Starting server at http://localhost:5000")
-        print("📊 API Documentation available at /api/")
-        print("🔍 Health check: http://localhost:5000/api/health")
-        print("🎥 YouTube test: http://localhost:5000/api/youtube/test")
-        print("\n🎯 Key Features:")
-        print("  • ISRC analysis with YouTube integration")
-        print("  • Lead scoring with YouTube opportunity assessment")
-        print("  • Contact discovery including YouTube channels")
-        print("  • Bulk processing with YouTube data collection")
-        print("  • Export capabilities with YouTube metrics")
-        print("\n💡 CLI Tools Available:")
-        print("  python cli.py test-youtube 'Artist Name'")
-        print("  python cli.py youtube-status")
-        print("  python cli.py youtube-opportunities")
-        print("  python cli.py analyze ISRC --include-youtube")
-        print("\nPress Ctrl+C to stop the server")
-        print("=" * 70)
+        # Get port and host
+        port = int(os.getenv('PORT', 5000))
+        host = '0.0.0.0'
         
-        # Start the Flask app
-        app.run(host='0.0.0.0', port=5000, debug=True)
-        
+        if is_production():
+            print(f"🚀 Starting production server on {host}:{port}")
+            print("📊 Health check: /api/health")
+            print("🎥 YouTube integration: /api/youtube/stats")
+            
+            # Use Gunicorn in production would be better, but direct Flask works for Render
+            app.run(
+                host=host,
+                port=port,
+                debug=False,
+                threaded=True
+            )
+        else:
+            print(f"🛠️  Starting development server on {host}:{port}")
+            print("📊 API Documentation: http://localhost:5000/api/")
+            print("🔍 Health check: http://localhost:5000/api/health")
+            print("🎥 YouTube test: http://localhost:5000/api/youtube/test")
+            print("\n💡 CLI Tools Available:")
+            print("  python cli.py test-youtube 'Artist Name'")
+            print("  python cli.py analyze ISRC --include-youtube")
+            print("\nPress Ctrl+C to stop the server")
+            print("=" * 70)
+            
+            app.run(
+                host=host,
+                port=port,
+                debug=True
+            )
+            
     except ImportError as e:
         print(f"❌ Failed to import Flask app: {e}")
         print("Please ensure all dependencies are installed: pip install -r requirements.txt")
         sys.exit(1)
     except Exception as e:
         print(f"❌ Failed to start server: {e}")
-        sys.exit(1)
-
-def run_cli():
-    """Alternative entry point for CLI operations"""
-    try:
-        from cli import cli
-        cli()
-    except ImportError as e:
-        print(f"❌ Failed to import CLI: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == '__main__':
-    # Check if running in CLI mode
-    if len(sys.argv) > 1 and sys.argv[1] in ['cli', 'test', 'migrate']:
-        run_cli()
-    else:
-        main()
+    main()

@@ -18,10 +18,32 @@ from config.settings import settings
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend requests
+# Production-ready CORS configuration
+if os.getenv('RENDER') or os.getenv('FLASK_ENV') == 'production':
+    # Production CORS - restrict to your frontend domains
+    allowed_origins = [
+        "https://isrc-analyzer-frontend.onrender.com",
+        "https://your-custom-domain.com",  # Add your custom domain if you have one
+    ]
+    
+    # Allow additional origins from environment variable
+    extra_origins = os.getenv('CORS_ORIGINS', '').split(',')
+    allowed_origins.extend([origin.strip() for origin in extra_origins if origin.strip()])
+    
+    CORS(app, 
+         origins=allowed_origins,
+         supports_credentials=True,
+         allow_headers=['Content-Type', 'Authorization'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+    
+    print(f"✅ Production CORS configured for origins: {allowed_origins}")
+else:
+    # Development CORS - allow all origins
+    CORS(app)
+    print("🛠️  Development CORS configured (all origins allowed)")
 
 # Configuration
-app.config['SECRET_KEY'] = settings.app.secret_key
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Initialize services

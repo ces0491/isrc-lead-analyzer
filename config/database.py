@@ -11,12 +11,27 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.types import JSON
 from config.settings import settings
+from urllib.parse import urlparse
 
 # Database setup
 engine = create_engine(settings.database.url, echo=settings.database.echo)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+# At the top of the file, update the database URL logic:
+def get_database_url():
+    """Get database URL for different environments"""
+    if os.getenv('DATABASE_URL'):
+        # Production PostgreSQL (Render)
+        db_url = os.getenv('DATABASE_URL')
+        # Fix postgres:// to postgresql:// for SQLAlchemy 1.4+
+        if db_url.startswith('postgres://'):
+            db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        return db_url
+    else:
+        # Development SQLite
+        return 'sqlite:///data/leads.db'
+    
 class Artist(Base):
     """Artist model with complete YouTube integration"""
     __tablename__ = "artists"
@@ -192,7 +207,31 @@ class DatabaseManager:
     """Database operations manager with YouTube integration - COMPLETE VERSION"""
     
     def __init__(self):
-        self._session = None
+        self.database_url = get_database_url()
+        
+        # Production-ready engine configuration
+        if 'postgresql://' in self.database_url:
+            self.engine = create_engine(
+                self.database_url,
+                pool_pre_ping=True,        # Test connections before use
+                pool_recycle=300,          # Recycle connections every 5 minutes
+                connect_args={
+                    "sslmode": "require"    # Required for Render PostgreSQL
+                }
+            )
+        else:
+            # SQLite for development
+            self.engine = create_engine(self.database_url)
+        
+        self.Session = sessionmaker(bind=self.engine)
+        self.session = self.Session()
+        
+        # Ensure all tables are created
+        try:
+            Base.metadata.create_all(self.engine)
+        except Exception as e:
+            print(f"Warning: Could not create tables: {e}")
+            # In production, this might fail initially but will work after migration
     
     @property
     def session(self):

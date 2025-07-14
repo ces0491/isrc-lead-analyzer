@@ -46,7 +46,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "react-scripts build && echo 'Build completed for Render deployment'",
+    "build:production": "REACT_APP_API_BASE_URL=https://isrc-analyzer-api.onrender.com react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint src/**/*.{js,jsx,ts,tsx}",

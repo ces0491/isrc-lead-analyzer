@@ -25,8 +25,9 @@ asyncio-throttle==1.0.2
 # Music API integrations
 spotipy==2.23.0
 
-# YouTube API integration (NEW)
+# YouTube API integration
 google-api-python-client==2.108.0
+google-auth==2.17.3
 google-auth-httplib2==0.1.1
 google-auth-oauthlib==1.1.0
 
@@ -88,8 +89,8 @@ uvicorn==0.24.0   # ASGI server alternative
 
 # Database drivers (choose based on your needs)
 # For SQLite (default): included with Python
-# For PostgreSQL: uncomment below
-# psycopg2-binary==2.9.9
+# For PostgreSQL:
+psycopg2-binary==2.9.7
 
 # For MySQL: uncomment below  
 # PyMySQL==1.1.0
