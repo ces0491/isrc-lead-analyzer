@@ -1,107 +1,13 @@
-# requirements.txt - Complete dependencies for YouTube integration
-# Core Flask and web framework
+# Minimal requirements.txt for guaranteed Render deployment
 Flask==2.3.3
 Flask-CORS==4.0.0
-Werkzeug==2.3.7
-
-# Database and ORM
 SQLAlchemy==2.0.21
-
-# Configuration and environment
-python-dotenv==1.0.0  # Fixed: Added python-dotenv
-
-# HTTP requests and API clients
+psycopg2-binary==2.9.7
+python-dotenv==1.0.0
 requests==2.31.0
-aiohttp==3.8.6
-
-# Data processing and utilities
-pandas==2.1.1
-python-dateutil==2.8.2
-
-# Rate limiting and async
-redis==5.0.0
-asyncio-throttle==1.0.2
-
-# Music API integrations
 spotipy==2.23.0
-
-# YouTube API integration
 google-api-python-client==2.108.0
 google-auth==2.17.3
-google-auth-httplib2==0.1.1
-google-auth-oauthlib==1.1.0
-
-# Web scraping for contact discovery
 beautifulsoup4==4.12.2
-lxml==4.9.3
-
-# CLI and utilities
 click==8.1.7
-tabulate==0.9.0
-
-# Testing framework
-pytest==7.4.2
-pytest-asyncio==0.21.1
-
-# Code formatting and linting
-black==23.7.0
-flake8==6.0.0
-isort==5.12.0
-
-# Additional utilities
-colorama==0.4.6  # For colored terminal output
-tqdm==4.66.1     # Progress bars for bulk operations
-
-# Optional: Enhanced data processing
-numpy==1.24.3    # For numerical operations
-matplotlib==3.7.2  # For generating charts/graphs
-seaborn==0.12.2  # For statistical visualizations
-
-# Optional: Advanced text processing
-nltk==3.8.1      # For natural language processing in bios
-textblob==0.17.1 # For sentiment analysis
-
-# Optional: Email validation
-email-validator==2.1.0
-
-# Optional: URL validation and parsing
-validators==0.22.0
-
-# Optional: Enhanced HTTP client
-httpx==0.25.0    # Modern HTTP client as requests alternative
-
-# Optional: Caching
-diskcache==5.6.3 # Disk-based caching for API responses
-
-# Optional: Monitoring and logging
-structlog==23.2.0  # Structured logging
-prometheus-client==0.19.0  # Metrics collection
-
-# Optional: Security
-cryptography==41.0.7  # For secure API key storage
-
-# Development dependencies (install with pip install -r requirements.txt -r requirements-dev.txt)
-# Or use: pip install -e ".[dev]" if using setup.py
-
-# Production server (optional)
-gunicorn==21.2.0  # WSGI server for production
-uvicorn==0.24.0   # ASGI server alternative
-
-# Database drivers (choose based on your needs)
-# For SQLite (default): included with Python
-# For PostgreSQL:
-psycopg2-binary==2.9.7
-
-# For MySQL: uncomment below  
-# PyMySQL==1.1.0
-
-# For Redis: already included above
-# redis==5.0.0
-
-# Environment-specific packages
-# For Windows: uncomment if needed
-# pywin32==306  # Windows-specific utilities
-
-# For macOS: usually no additional packages needed
-
-# For Linux: usually no additional packages needed
+gunicorn==21.2.0
