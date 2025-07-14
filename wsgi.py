@@ -10,12 +10,14 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
+# Set production environment variables
+os.environ.setdefault('FLASK_ENV', 'production')
+os.environ.setdefault('FLASK_DEBUG', 'false')
+
 def create_app():
     """Create and configure the Flask application for production"""
     
-    # Set production environment
-    os.environ.setdefault('FLASK_ENV', 'production')
-    os.environ.setdefault('FLASK_DEBUG', 'false')
+    print("🚀 Starting Precise Digital API in PRODUCTION mode")
     
     try:
         # Initialize database first
@@ -27,7 +29,13 @@ def create_app():
         # Import the Flask app
         from src.api.routes import app
         
-        print("✅ Flask app loaded successfully")
+        # Configure for production
+        app.config['DEBUG'] = False
+        app.config['TESTING'] = False
+        
+        print("✅ Flask app configured for production")
+        print(f"🎯 API available at: /api/")
+        
         return app
         
     except Exception as e:
@@ -36,9 +44,10 @@ def create_app():
         traceback.print_exc()
         raise
 
-# Create the application instance
+# Create the application instance for Gunicorn
 app = create_app()
 
 if __name__ == "__main__":
-    # This won't be used in production but useful for testing
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    # This should never run in production with Gunicorn
+    print("⚠️  Warning: Running in fallback mode. Use Gunicorn for production!")
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
