@@ -1,8 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Custom styles for ISRC Analyzer */
+/* Custom styles for ISRC Analyzer - Prism Analytics Engine */
 body {
   margin: 0;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -18,6 +16,16 @@ code {
     monospace;
 }
 
+/* Prism Analytics Engine Brand Colors */
+:root {
+  --prism-black: #1A1A1A;
+  --precise-red: #E50914;
+  --charcoal-gray: #333333;
+  --light-gray: #F8F9FA;
+  --medium-gray: #666666;
+  --pure-white: #FFFFFF;
+}
+
 /* Custom component styles */
 .tracking-wide {
   letter-spacing: 0.1em;
@@ -27,20 +35,126 @@ code {
   letter-spacing: 0.15em;
 }
 
+/* Prism branding utilities */
+.text-prism-black {
+  color: var(--prism-black);
+}
+
+.text-precise-red {
+  color: var(--precise-red);
+}
+
+.bg-prism-black {
+  background-color: var(--prism-black);
+}
+
+.bg-precise-red {
+  background-color: var(--precise-red);
+}
+
+.border-precise-red {
+  border-color: var(--precise-red);
+}
+
 /* Custom scrollbar for sidebar */
 .sidebar-scroll::-webkit-scrollbar {
   width: 4px;
 }
 
 .sidebar-scroll::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--light-gray);
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--medium-gray);
   border-radius: 2px;
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--charcoal-gray);
+}
+
+/* Data visualization styles for analytics */
+.chart-container {
+  background: var(--pure-white);
+  border: 1px solid var(--light-gray);
+  border-radius: 8px;
+}
+
+/* Lead scoring indicator styles */
+.score-high {
+  background: linear-gradient(135deg, var(--precise-red) 0%, #ff4757 100%);
+}
+
+.score-medium {
+  background: linear-gradient(135deg, #ffa502 0%, #ff6348 100%);
+}
+
+.score-low {
+  background: linear-gradient(135deg, var(--medium-gray) 0%, var(--charcoal-gray) 100%);
+}
+
+/* Animation utilities for data loading */
+@keyframes prism-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-prism-pulse {
+  animation: prism-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Typography hierarchy following brand guidelines */
+.prism-heading {
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  color: var(--prism-black);
+}
+
+.prism-subheading {
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: var(--charcoal-gray);
+}
+
+.prism-data {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--prism-black);
+}
+
+/* Button styles following brand guidelines */
+.btn-prism {
+  background: var(--precise-red);
+  color: var(--pure-white);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-prism:hover {
+  background: #cc0812;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+}
+
+.btn-secondary {
+  background: var(--charcoal-gray);
+  color: var(--pure-white);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--prism-black);
 }

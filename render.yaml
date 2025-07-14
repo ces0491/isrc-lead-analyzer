@@ -2,14 +2,13 @@ services:
   # PostgreSQL Database
   - type: pserv
     name: isrc-analyzer-postgres
+    runtime: postgres
     plan: starter
-    databaseName: isrc_analyzer_db
-    user: isrc_analyzer_user
-
-  # Backend API Service
+    
+  # Backend API Service  
   - type: web
     name: isrc-analyzer-api
-    runtime: python3
+    runtime: python
     plan: starter
     buildCommand: |
       pip install --upgrade pip setuptools wheel && 
@@ -24,14 +23,14 @@ services:
       - key: FLASK_ENV
         value: production
       - key: FLASK_DEBUG
-        value: false
+        value: "false"
       - key: PYTHONPATH
         value: /opt/render/project/src
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
         value: "*"
-      # API Keys - Set these in Render dashboard
+      # API Keys - Set these in Render dashboard with sync: false
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
@@ -40,6 +39,8 @@ services:
         sync: false
       - key: LASTFM_API_KEY
         sync: false
+      - key: MUSICBRAINZ_USER_AGENT
+        value: "PrismAnalytics/1.0 (ces@precise.digital)"
       - key: CONTACT_EMAIL
         value: ces@precise.digital
 
