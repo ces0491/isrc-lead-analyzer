@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Search, 
   Database, 
   Upload, 
   BarChart3, 
   Youtube,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  FileText
 } from 'lucide-react';
 
 // Import components
@@ -15,6 +17,7 @@ import BulkProcessor from './components/BulkProcessor';
 import LeadsList from './components/LeadsList';
 import YouTubeIntegration from './components/YouTubeIntegration';
 import Settings from './components/Settings';
+import TrackAnalysisPage from './components/TrackAnalysisPage';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
@@ -197,6 +200,25 @@ const formatRateLimit = (api, status) => {
         description: '60 requests per minute'
       };
 
+    // Enhanced APIs
+    case 'genius':
+      const geniusUsedMin = status.requests_this_minute || 0;
+      const geniusLimitMin = status.minute_limit || 100;
+      return {
+        display: `${geniusUsedMin}/${geniusLimitMin}/min`,
+        color: getUsageColor(geniusUsedMin, geniusLimitMin),
+        description: '100 requests per minute'
+      };
+
+    case 'musixmatch':
+      const musixUsedMin = status.requests_this_minute || 0;
+      const musixLimitMin = status.minute_limit || 20;
+      return {
+        display: `${musixUsedMin}/${musixLimitMin}/min`,
+        color: getUsageColor(musixUsedMin, musixLimitMin),
+        description: '20 requests per minute'
+      };
+
     default:
       return {
         display: 'Unknown',
@@ -206,7 +228,138 @@ const formatRateLimit = (api, status) => {
   }
 };
 
-const App = () => {
+// Navigation Component
+const Navigation = ({ activeRoute, setActiveRoute, systemStatus }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const navigationItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/' },
+    { id: 'analyze', label: 'ISRC Analyzer', icon: Search, path: '/analyze' },
+    { id: 'track-analysis', label: 'Track Analysis', icon: FileText, path: '/track' },
+    { id: 'bulk', label: 'Bulk Processing', icon: Upload, path: '/bulk' },
+    { id: 'leads', label: 'Leads Database', icon: Database, path: '/leads' },
+    { id: 'youtube', label: 'YouTube Integration', icon: Youtube, path: '/youtube' },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon, path: '/settings' },
+  ];
+
+  const handleNavigation = (item) => {
+    setActiveRoute(item.id);
+    navigate(item.path);
+  };
+
+  // Determine active route based on current path
+  const currentPath = location.pathname;
+  const activeItem = navigationItems.find(item => {
+    if (item.path === '/' && currentPath === '/') return true;
+    if (item.path !== '/' && currentPath.startsWith(item.path)) return true;
+    return false;
+  }) || navigationItems[0];
+
+  return (
+    <nav className="fixed left-0 w-64 bg-white shadow-sm border-r border-gray-200 z-40 overflow-y-auto" 
+         style={{ height: 'calc(100vh - 80px)', top: '80px' }}>
+      <div className="p-4">
+        <div className="space-y-2">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeItem.id === item.id;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavigation(item)}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left tracking-wide ${
+                  isActive
+                    ? 'bg-red-50 text-red-600 border border-red-200'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{item.label.toUpperCase()}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* API Rate Limits Panel */}
+      {systemStatus?.rate_limits && (
+        <div className="p-4 border-t border-gray-200">
+          <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">
+            API RATE LIMITS
+          </h3>
+          
+          <div className="space-y-3">
+            {Object.entries(systemStatus.rate_limits).map(([api, status]) => {
+              const limitInfo = formatRateLimit(api, status);
+              
+              return (
+                <div key={api} className="group relative">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600 capitalize tracking-wide font-medium">
+                      {api.toUpperCase()}
+                    </span>
+                    <span className={`font-medium font-mono ${limitInfo.color}`}>
+                      {limitInfo.display}
+                    </span>
+                  </div>
+                  
+                  {/* Tooltip on hover */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute left-0 top-full mt-1 z-50 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap pointer-events-none">
+                    {limitInfo.description}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Legend */}
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center justify-between text-gray-500">
+                <span>Usage indicators:</span>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-500">Good</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span className="text-gray-500">High</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="text-gray-500">Limit</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prism Branding Footer - Fixed at bottom */}
+      <div className="absolute bottom-4 left-4 right-4">
+        <div className="text-center">
+          <PrismLogo className="h-8 w-16 mx-auto mb-2 opacity-60" />
+          <p className="text-xs text-gray-700 tracking-widest">
+            P R I S M
+          </p>
+          <p className="text-xs text-gray-500 tracking-wide">
+            Analytics Engine v1.0
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            by Precise Digital
+          </p>
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+// Main App Content Component
+const AppContent = () => {
   const [systemStatus, setSystemStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeRoute, setActiveRoute] = useState('dashboard');
@@ -233,23 +386,6 @@ const App = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const navigationItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
-    { id: 'analyze', label: 'ISRC Analyzer', icon: Search, component: ISRCAnalyzer },
-    { id: 'bulk', label: 'Bulk Processing', icon: Upload, component: BulkProcessor },
-    { id: 'leads', label: 'Leads Database', icon: Database, component: LeadsList },
-    { id: 'youtube', label: 'YouTube Integration', icon: Youtube, component: YouTubeIntegration },
-    { id: 'settings', label: 'Settings', icon: SettingsIcon, component: Settings },
-  ];
-
-  const renderActiveComponent = () => {
-    const activeItem = navigationItems.find(item => item.id === activeRoute);
-    if (!activeItem) return <Dashboard systemStatus={systemStatus} />;
-    
-    const Component = activeItem.component;
-    return <Component systemStatus={systemStatus} />;
   };
 
   if (loading) {
@@ -315,111 +451,40 @@ const App = () => {
       {/* Main Layout with Fixed Sidebar */}
       <div className="flex pt-20"> {/* Added top padding for fixed header */}
         {/* Fixed Sidebar Navigation */}
-        <nav className="fixed left-0 w-64 bg-white shadow-sm border-r border-gray-200 z-40 overflow-y-auto" 
-             style={{ height: 'calc(100vh - 80px)', top: '80px' }}>
-          <div className="p-4">
-            <div className="space-y-2">
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveRoute(item.id)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left tracking-wide ${
-                      activeRoute === item.id
-                        ? 'bg-red-50 text-red-600 border border-red-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{item.label.toUpperCase()}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* API Rate Limits Panel */}
-          {systemStatus?.rate_limits && (
-            <div className="p-4 border-t border-gray-200">
-              <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                API RATE LIMITS
-              </h3>
-              
-              <div className="space-y-3">
-                {Object.entries(systemStatus.rate_limits).map(([api, status]) => {
-                  const limitInfo = formatRateLimit(api, status);
-                  
-                  return (
-                    <div key={api} className="group relative">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600 capitalize tracking-wide font-medium">
-                          {api.toUpperCase()}
-                        </span>
-                        <span className={`font-medium font-mono ${limitInfo.color}`}>
-                          {limitInfo.display}
-                        </span>
-                      </div>
-                      
-                      {/* Tooltip on hover */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute left-0 top-full mt-1 z-50 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap pointer-events-none">
-                        {limitInfo.description}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Legend */}
-              <div className="mt-4 pt-3 border-t border-gray-100">
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between text-gray-500">
-                    <span>Usage indicators:</span>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-500">Good</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                      <span className="text-gray-500">High</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span className="text-gray-500">Limit</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Prism Branding Footer - Fixed at bottom */}
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="text-center">
-              <PrismLogo className="h-8 w-16 mx-auto mb-2 opacity-60" />
-              <p className="text-xs text-gray-700 tracking-widest">
-                P R I S M
-              </p>
-              <p className="text-xs text-gray-500 tracking-wide">
-                Analytics Engine v1.0
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                by Precise Digital
-              </p>
-            </div>
-          </div>
-        </nav>
+        <Navigation 
+          activeRoute={activeRoute} 
+          setActiveRoute={setActiveRoute} 
+          systemStatus={systemStatus} 
+        />
 
         {/* Main Content - Adjusted for fixed sidebar */}
         <main className="flex-1 ml-64 min-h-screen bg-white">
           <div className="p-6">
-            {renderActiveComponent()}
+            <Routes>
+              <Route path="/" element={<Dashboard systemStatus={systemStatus} />} />
+              <Route path="/analyze" element={<ISRCAnalyzer systemStatus={systemStatus} />} />
+              <Route path="/track" element={<TrackAnalysisPage />} />
+              <Route path="/track/:isrc" element={<TrackAnalysisPage />} />
+              <Route path="/bulk" element={<BulkProcessor systemStatus={systemStatus} />} />
+              <Route path="/leads" element={<LeadsList systemStatus={systemStatus} />} />
+              <Route path="/youtube" element={<YouTubeIntegration systemStatus={systemStatus} />} />
+              <Route path="/settings" element={<Settings systemStatus={systemStatus} />} />
+              {/* Catch-all route */}
+              <Route path="*" element={<Dashboard systemStatus={systemStatus} />} />
+            </Routes>
           </div>
         </main>
       </div>
     </div>
+  );
+};
+
+// Main App Component with Router
+const App = () => {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 };
 

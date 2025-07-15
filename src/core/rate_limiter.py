@@ -1,6 +1,6 @@
 """
-Rate limiting system for API calls - Complete updated version
-Uses environment variables from .env file with correct rate limits
+Rate limiting system for API calls - Enhanced version with lyrics APIs
+Updated for Prism Analytics Engine enhanced track metadata collection
 """
 import os
 import time
@@ -15,15 +15,15 @@ logger = logging.getLogger(__name__)
 
 class RateLimitManager:
     """
-    Manages rate limits for multiple APIs with correct constraints from .env
+    Enhanced rate limiter with lyrics APIs for comprehensive track metadata
     """
     
     def __init__(self):
-        # Load configuration from environment variables with correct defaults
+        # Load configuration from environment variables with enhanced APIs
         self.api_configs = {
             'musicbrainz': {
-                'requests_per_second': 1,      # Correct: 1 request per second
-                'requests_per_minute': int(os.getenv('MUSICBRAINZ_RATE_LIMIT', 50)),  # Conservative
+                'requests_per_second': 1,      
+                'requests_per_minute': int(os.getenv('MUSICBRAINZ_RATE_LIMIT', 50)),
                 'requests_per_day': None,
                 'base_url': 'https://musicbrainz.org/ws/2/',
                 'headers': {'User-Agent': f"PreciseDigitalLeadGen/1.0 ({os.getenv('CONTACT_EMAIL', 'contact@precise.digital')})"},
@@ -34,7 +34,7 @@ class RateLimitManager:
                 'requests_per_minute': int(os.getenv('SPOTIFY_RATE_LIMIT', 100)),
                 'requests_per_day': None,
                 'base_url': 'https://api.spotify.com/v1/',
-                'api_key': None,  # Spotify uses OAuth, not API key
+                'api_key': None,
                 'client_id': os.getenv('SPOTIFY_CLIENT_ID'),
                 'client_secret': os.getenv('SPOTIFY_CLIENT_SECRET'),
                 'description': f"{os.getenv('SPOTIFY_RATE_LIMIT', 100)} req/min (varies by endpoint)"
@@ -56,8 +56,8 @@ class RateLimitManager:
                 'description': f"{os.getenv('YOUTUBE_DAILY_QUOTA', 10000)} quota units/day"
             },
             'lastfm': {
-                'requests_per_second': 5,      # Correct: 5 requests per second
-                'requests_per_minute': int(os.getenv('LASTFM_RATE_LIMIT', 250)),  # Conservative
+                'requests_per_second': 5,
+                'requests_per_minute': int(os.getenv('LASTFM_RATE_LIMIT', 250)),
                 'requests_per_day': None,
                 'base_url': 'https://ws.audioscrobbler.com/2.0/',
                 'api_key': os.getenv('LASTFM_API_KEY'),
@@ -70,12 +70,39 @@ class RateLimitManager:
                 'base_url': 'https://api.discogs.com/',
                 'headers': {'User-Agent': f"PreciseDigitalLeadGen/1.0 ({os.getenv('CONTACT_EMAIL', 'contact@precise.digital')})"},
                 'description': '60 req/min, 1 req/sec'
+            },
+            # Enhanced APIs for lyrics and metadata
+            'genius': {
+                'requests_per_minute': 100,
+                'requests_per_hour': 1000,
+                'requests_per_day': None,
+                'base_url': 'https://api.genius.com',
+                'api_key': os.getenv('GENIUS_API_KEY'),
+                'headers': {'Authorization': f"Bearer {os.getenv('GENIUS_API_KEY')}"} if os.getenv('GENIUS_API_KEY') else {},
+                'description': '100 req/min, 1000 req/hour'
+            },
+            'musixmatch': {
+                'requests_per_minute': 20,
+                'requests_per_hour': 1000,
+                'requests_per_day': None,
+                'base_url': 'https://api.musixmatch.com/ws/1.1',
+                'api_key': os.getenv('MUSIXMATCH_API_KEY'),
+                'description': '20 req/min, 1000 req/hour'
+            },
+            'lyricfind': {
+                'requests_per_minute': 60,
+                'requests_per_hour': 1000,
+                'requests_per_day': None,
+                'base_url': 'https://api.lyricfind.com',
+                'api_key': os.getenv('LYRICFIND_API_KEY'),
+                'description': '60 req/min, 1000 req/hour'
             }
         }
         
         # Request tracking with separate queues for different time windows
         self.request_history_second = defaultdict(deque)
         self.request_history_minute = defaultdict(deque)
+        self.request_history_hour = defaultdict(deque)
         self.daily_counters = defaultdict(int)
         self.youtube_quota_used = 0
         self.last_reset = defaultdict(lambda: datetime.now().date())
@@ -89,18 +116,18 @@ class RateLimitManager:
         # Set timeouts from environment
         self.timeout = int(os.getenv('SCRAPING_TIMEOUT', 10))
         
-        logger.info("Rate limiter initialized with corrected API limits")
+        logger.info("Enhanced rate limiter initialized with lyrics APIs")
         self._log_configuration()
     
     def _log_configuration(self):
         """Log the current configuration for debugging"""
-        logger.info("API Rate Limit Configuration:")
+        logger.info("Enhanced API Rate Limit Configuration:")
         for api_name, config in self.api_configs.items():
             logger.info(f"  {api_name}: {config.get('description', 'No description')}")
             if config.get('api_key'):
-                logger.info(f"    API Key: {'*' * 20}")
+                logger.info(f"    API Key: {'✅ Configured' if config['api_key'] else '❌ Missing'}")
             elif config.get('client_id'):
-                logger.info(f"    Client ID: {'*' * 20}")
+                logger.info(f"    Client ID: {'✅ Configured' if config['client_id'] else '❌ Missing'}")
     
     def _clean_old_requests(self, api_name: str):
         """Remove old requests from tracking queues"""
@@ -115,6 +142,11 @@ class RateLimitManager:
         minute_queue = self.request_history_minute[api_name]
         while minute_queue and current_time - minute_queue[0] > 60.0:
             minute_queue.popleft()
+        
+        # Clean requests older than 1 hour
+        hour_queue = self.request_history_hour[api_name]
+        while hour_queue and current_time - hour_queue[0] > 3600.0:
+            hour_queue.popleft()
     
     def _reset_daily_counter_if_needed(self, api_name: str):
         """Reset daily counters if it's a new day"""
@@ -128,7 +160,7 @@ class RateLimitManager:
     
     def _can_make_request(self, api_name: str, quota_cost: int = 1) -> tuple[bool, float]:
         """
-        Check if we can make a request
+        Enhanced rate limiting check including hourly limits
         Returns (can_make_request, wait_time_in_seconds)
         """
         config = self.api_configs.get(api_name)
@@ -161,10 +193,19 @@ class RateLimitManager:
                     if wait_time > 0:
                         return False, wait_time
         
+        # Check per-hour limit (for lyrics APIs)
+        if config.get('requests_per_hour'):
+            current_hour_requests = len(self.request_history_hour[api_name])
+            if current_hour_requests >= config['requests_per_hour']:
+                if self.request_history_hour[api_name]:
+                    oldest_request = self.request_history_hour[api_name][0]
+                    wait_time = 3600.0 - (current_time - oldest_request)
+                    if wait_time > 0:
+                        return False, wait_time
+        
         # Check YouTube quota specifically
         if api_name == 'youtube' and config.get('quota_per_day'):
             if self.youtube_quota_used + quota_cost > config['quota_per_day']:
-                # Calculate wait time until next day
                 tomorrow = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
                 wait_time = (tomorrow - datetime.now()).total_seconds()
                 return False, wait_time
@@ -180,7 +221,7 @@ class RateLimitManager:
     
     def make_request(self, api_name: str, endpoint: str, params: Dict = None, 
                     headers: Dict = None, method: str = 'GET', quota_cost: int = None) -> Optional[Dict]:
-        """Make a rate-limited API request"""
+        """Enhanced API request with lyrics API support"""
         
         config = self.api_configs.get(api_name)
         if not config:
@@ -210,7 +251,7 @@ class RateLimitManager:
         # Build URL
         base_url = config['base_url'].rstrip('/')
         endpoint = endpoint.lstrip('/')
-        url = f"{base_url}/{endpoint}"
+        url = f"{base_url}/{endpoint}" if endpoint else base_url
         
         # Prepare headers
         request_headers = {}
@@ -219,7 +260,7 @@ class RateLimitManager:
         if headers:
             request_headers.update(headers)
         
-        # Add API keys
+        # Add API keys based on service
         if not params:
             params = {}
         
@@ -228,12 +269,18 @@ class RateLimitManager:
             params['format'] = 'json'
         elif api_name == 'youtube' and config.get('api_key'):
             params['key'] = config['api_key']
+        elif api_name == 'musixmatch' and config.get('api_key'):
+            params['apikey'] = config['api_key']
+            params['format'] = 'json'
+        elif api_name == 'lyricfind' and config.get('api_key'):
+            params['apikey'] = config['api_key']
         
         try:
             # Record the request
             current_time = time.time()
             self.request_history_second[api_name].append(current_time)
             self.request_history_minute[api_name].append(current_time)
+            self.request_history_hour[api_name].append(current_time)
             self.daily_counters[api_name] += 1
             
             # Track YouTube quota
@@ -267,7 +314,10 @@ class RateLimitManager:
             logger.error(f"Timeout error for {api_name} request to {url}")
             return None
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error for {api_name}: {e} (Status: {e.response.status_code if e.response else 'Unknown'})")
+            if e.response and e.response.status_code == 429:
+                logger.warning(f"Rate limit hit for {api_name}: {e}")
+            else:
+                logger.error(f"HTTP error for {api_name}: {e} (Status: {e.response.status_code if e.response else 'Unknown'})")
             return None
         except requests.exceptions.RequestException as e:
             logger.error(f"Request error for {api_name}: {str(e)}")
@@ -291,7 +341,7 @@ class RateLimitManager:
             return 1  # Default cost
     
     def get_rate_limit_status(self) -> Dict:
-        """Get comprehensive rate limit status for all APIs"""
+        """Get comprehensive rate limit status for all APIs including enhanced ones"""
         status = {}
         
         for api_name, config in self.api_configs.items():
@@ -301,11 +351,13 @@ class RateLimitManager:
             # Basic counters
             requests_this_second = len(self.request_history_second[api_name])
             requests_this_minute = len(self.request_history_minute[api_name])
+            requests_this_hour = len(self.request_history_hour[api_name])
             requests_today = self.daily_counters[api_name]
             
             api_status = {
                 'requests_this_second': requests_this_second,
                 'requests_this_minute': requests_this_minute,
+                'requests_this_hour': requests_this_hour,
                 'requests_today': requests_today,
                 'description': config.get('description', ''),
                 'configured': bool(config.get('api_key') or config.get('client_id'))
@@ -322,6 +374,12 @@ class RateLimitManager:
                 api_status.update({
                     'minute_limit': config['requests_per_minute'],
                     'minute_remaining': max(0, config['requests_per_minute'] - requests_this_minute)
+                })
+            
+            if config.get('requests_per_hour'):
+                api_status.update({
+                    'hour_limit': config['requests_per_hour'],
+                    'hour_remaining': max(0, config['requests_per_hour'] - requests_this_hour)
                 })
             
             if config.get('requests_per_day'):
@@ -342,48 +400,12 @@ class RateLimitManager:
         
         return status
     
-    def estimate_batch_time(self, api_name: str, num_requests: int) -> float:
-        """Estimate time for batch processing"""
-        config = self.api_configs.get(api_name, {})
-        
-        if config.get('requests_per_second'):
-            # Most restrictive limit
-            return num_requests * 1.1  # 1 second per request + 10% buffer
-        elif config.get('requests_per_minute'):
-            # Per minute limit
-            return (num_requests / config['requests_per_minute']) * 60 * 1.2  # 20% buffer
-        else:
-            # Default estimate
-            return num_requests * 0.5  # 500ms per request
-    
-    def get_api_status_summary(self) -> Dict:
-        """Get a summary of API status for dashboard display"""
-        status = self.get_rate_limit_status()
-        summary = {}
-        
-        for api_name, api_status in status.items():
-            if api_name == 'youtube':
-                if api_status.get('quota_limit_daily'):
-                    usage_pct = (api_status['quota_used_today'] / api_status['quota_limit_daily']) * 100
-                    summary[api_name] = f"{api_status['quota_used_today']}/{api_status['quota_limit_daily']}"
-                else:
-                    summary[api_name] = "Not configured"
-            else:
-                # Use the most restrictive limit for display
-                if api_status.get('second_limit'):
-                    summary[api_name] = f"{api_status['requests_this_second']}/{api_status['second_limit']}"
-                elif api_status.get('minute_limit'):
-                    summary[api_name] = f"{api_status['requests_this_minute']}/{api_status['minute_limit']}"
-                else:
-                    summary[api_name] = f"{api_status['requests_today']} today"
-        
-        return summary
-    
     def reset_counters(self, api_name: str = None):
         """Reset counters for testing (specify api_name or reset all)"""
         if api_name:
             self.request_history_second[api_name].clear()
             self.request_history_minute[api_name].clear()
+            self.request_history_hour[api_name].clear()
             self.daily_counters[api_name] = 0
             if api_name == 'youtube':
                 self.youtube_quota_used = 0
@@ -391,6 +413,7 @@ class RateLimitManager:
         else:
             self.request_history_second.clear()
             self.request_history_minute.clear()
+            self.request_history_hour.clear()
             self.daily_counters.clear()
             self.youtube_quota_used = 0
             self.last_reset.clear()
@@ -399,7 +422,20 @@ class RateLimitManager:
 # Global instance
 rate_limiter = RateLimitManager()
 
-# Convenience functions
+# Enhanced convenience functions for lyrics APIs
+def genius_request(endpoint: str, params: Dict = None) -> Optional[Dict]:
+    """Make Genius API request"""
+    return rate_limiter.make_request('genius', endpoint, params)
+
+def musixmatch_request(endpoint: str, params: Dict = None) -> Optional[Dict]:
+    """Make Musixmatch API request"""
+    return rate_limiter.make_request('musixmatch', endpoint, params)
+
+def lyricfind_request(endpoint: str, params: Dict = None) -> Optional[Dict]:
+    """Make LyricFind API request"""
+    return rate_limiter.make_request('lyricfind', endpoint, params)
+
+# Existing convenience functions
 def safe_request(api_name: str, endpoint: str, params: Dict = None, **kwargs) -> Optional[Dict]:
     """Make a safe API request with automatic error handling"""
     return rate_limiter.make_request(api_name, endpoint, params, **kwargs)
@@ -408,7 +444,6 @@ def get_rate_limits() -> Dict:
     """Get current rate limit status"""
     return rate_limiter.get_rate_limit_status()
 
-# Specialized API functions
 def musicbrainz_request(endpoint: str, params: Dict = None) -> Optional[Dict]:
     """Make a MusicBrainz request with proper rate limiting (1 req/sec)"""
     return safe_request('musicbrainz', endpoint, params)
@@ -440,20 +475,22 @@ def lastfm_artist_info(artist_name: str) -> Optional[Dict]:
     return safe_request('lastfm', '', params)
 
 if __name__ == "__main__":
-    # Test the rate limiter
-    print("🎵 Prism Analytics Engine - Rate Limiter Test")
-    print("=" * 50)
+    # Test the enhanced rate limiter
+    print("🎵 Prism Analytics Engine - Enhanced Rate Limiter Test")
+    print("=" * 60)
     
     status = rate_limiter.get_rate_limit_status()
     for api, info in status.items():
         print(f"\n{api.upper()}:")
         print(f"  Description: {info.get('description', 'N/A')}")
-        print(f"  Configured: {'Yes' if info.get('configured') else 'No'}")
+        print(f"  Configured: {'✅ Yes' if info.get('configured') else '❌ No'}")
         
         if 'second_limit' in info:
             print(f"  Per second: {info['requests_this_second']}/{info['second_limit']}")
         if 'minute_limit' in info:
             print(f"  Per minute: {info['requests_this_minute']}/{info['minute_limit']}")
+        if 'hour_limit' in info:
+            print(f"  Per hour: {info['requests_this_hour']}/{info['hour_limit']}")
         if 'quota_limit_daily' in info:
             print(f"  Daily quota: {info['quota_used_today']}/{info['quota_limit_daily']}")
         

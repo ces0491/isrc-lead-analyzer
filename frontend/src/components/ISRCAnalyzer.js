@@ -12,8 +12,11 @@ import {
   BarChart3,
   Save,
   RefreshCw,
-  Mail
+  Mail,
+  FileText,
+  Zap
 } from 'lucide-react';
+import EnhancedTrackViewer from './EnhancedTrackViewer';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
@@ -42,6 +45,11 @@ const ISRCAnalyzer = () => {
   const [includeYoutube, setIncludeYoutube] = useState(true);
   const [saveToDb, setSaveToDb] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(false);
+  
+  // Enhanced analysis state
+  const [showEnhancedView, setShowEnhancedView] = useState(false);
+  const [enhancedData, setEnhancedData] = useState(null);
+  const [enhancedLoading, setEnhancedLoading] = useState(false);
 
   const validateISRC = (isrcCode) => {
     if (!isrcCode) return false;
@@ -98,6 +106,42 @@ const ISRCAnalyzer = () => {
     }
   };
 
+  // Enhanced analysis function
+  const analyzeEnhanced = async () => {
+    if (!isrc.trim()) return;
+    
+    const formattedISRC = formatISRC(isrc.trim());
+    
+    if (!validateISRC(formattedISRC)) {
+      setResult({ 
+        status: 'error', 
+        error: 'Invalid ISRC format. Expected format: CC-XXX-YY-NNNNN (e.g., USRC17607839)',
+        isrc: formattedISRC
+      });
+      return;
+    }
+    
+    setEnhancedLoading(true);
+    try {
+      const response = await apiCall('/analyze-isrc-enhanced', {
+        method: 'POST',
+        body: JSON.stringify({ isrc: formattedISRC })
+      });
+      
+      setEnhancedData(response);
+      setShowEnhancedView(true);
+    } catch (error) {
+      console.error('Enhanced analysis failed:', error);
+      setResult({ 
+        status: 'error', 
+        error: `Enhanced analysis failed: ${error.message}`,
+        isrc: formattedISRC
+      });
+    } finally {
+      setEnhancedLoading(false);
+    }
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       analyzeISRC();
@@ -123,6 +167,31 @@ const ISRCAnalyzer = () => {
       default: return 'Not classified';
     }
   };
+
+  // Enhanced Track Viewer Modal
+  if (showEnhancedView && enhancedData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-wide">ENHANCED TRACK ANALYSIS</h2>
+            <p className="text-gray-600">Comprehensive track metadata for distribution teams</p>
+          </div>
+          <button
+            onClick={() => setShowEnhancedView(false)}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium tracking-wide"
+          >
+            ← Back to Analyzer
+          </button>
+        </div>
+        
+        <EnhancedTrackViewer 
+          trackData={enhancedData}
+          onClose={() => setShowEnhancedView(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -210,23 +279,68 @@ const ISRCAnalyzer = () => {
             </label>
           </div>
 
-          <button
-            onClick={analyzeISRC}
-            disabled={loading || !isrc.trim() || !validateISRC(formatISRC(isrc))}
-            className="w-full bg-red-600 text-white py-3 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium tracking-wide transition-colors"
-          >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                ANALYZING...
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <Search className="h-5 w-5 mr-2" />
-                ANALYZE ISRC
-              </div>
-            )}
-          </button>
+          {/* Analysis Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={analyzeISRC}
+              disabled={loading || !isrc.trim() || !validateISRC(formatISRC(isrc))}
+              className="bg-red-600 text-white py-3 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium tracking-wide transition-colors"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  ANALYZING...
+                </div>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <Search className="h-5 w-5 mr-2" />
+                  STANDARD ANALYSIS
+                </div>
+              )}
+            </button>
+
+            <button
+              onClick={analyzeEnhanced}
+              disabled={enhancedLoading || !isrc.trim() || !validateISRC(formatISRC(isrc))}
+              className="bg-purple-600 text-white py-3 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium tracking-wide transition-colors"
+            >
+              {enhancedLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  ANALYZING...
+                </div>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <Zap className="h-5 w-5 mr-2" />
+                  ENHANCED ANALYSIS
+                </div>
+              )}
+            </button>
+          </div>
+
+          {/* Analysis Types Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">📊 STANDARD ANALYSIS</h4>
+              <ul className="space-y-1">
+                <li>• Lead scoring and tier classification</li>
+                <li>• Basic artist and track metadata</li>
+                <li>• YouTube channel discovery</li>
+                <li>• Contact information extraction</li>
+                <li>• Platform availability check</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">⚡ ENHANCED ANALYSIS</h4>
+              <ul className="space-y-1">
+                <li>• Comprehensive track credits & personnel</li>
+                <li>• Full lyrics with copyright information</li>
+                <li>• Technical audio analysis & metrics</li>
+                <li>• Publishing rights & splits breakdown</li>
+                <li>• Recording location & production details</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
