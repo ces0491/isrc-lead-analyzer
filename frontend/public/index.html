@@ -65,24 +65,10 @@
         }
         
         .prism-logo-loading {
-            width: 120px;
+            width: 200px;
             height: 80px;
             margin-bottom: 2rem;
             animation: prism-pulse 2s ease-in-out infinite;
-        }
-        
-        /* Triangular Prism Loading Animation */
-        .prism-triangular-loader {
-            width: 60px;
-            height: 60px;
-            margin-bottom: 1rem;
-            position: relative;
-            animation: prism-rotate 2s linear infinite;
-        }
-        
-        .prism-triangular-loader svg {
-            width: 100%;
-            height: 100%;
         }
         
         .prism-wordmark-loading {
@@ -127,15 +113,6 @@
             50% { 
                 opacity: 0.8; 
                 transform: scale(1.05); 
-            }
-        }
-        
-        @keyframes prism-rotate {
-            0% { 
-                transform: rotateY(0deg); 
-            }
-            100% { 
-                transform: rotateY(360deg); 
             }
         }
         
@@ -205,77 +182,169 @@
         <div class="prism-loading-progress-bar" id="prism-progress-bar"></div>
     </div>
 
-    <!-- Prism Loading Screen with Triangular Prism -->
+    <!-- Prism Loading Screen with New Brand Logo -->
     <div class="prism-loading-screen" id="prism-loading">
-        <!-- Enhanced Prism Logo with Triangular Prism Animation -->
-        <svg class="prism-logo-loading" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
-            <!-- Musical notation lines - representing raw music data -->
-            <g opacity="0.7">
-                <line x1="5" y1="20" x2="30" y2="20" stroke="#1A1A1A" stroke-width="1"/>
-                <line x1="5" y1="25" x2="30" y2="25" stroke="#1A1A1A" stroke-width="1"/>
-                <line x1="5" y1="30" x2="30" y2="30" stroke="#1A1A1A" stroke-width="1"/>
-                <line x1="5" y1="35" x2="30" y2="35" stroke="#1A1A1A" stroke-width="1"/>
-                <circle cx="10" cy="22.5" r="1.5" fill="#1A1A1A"/>
-                <circle cx="20" cy="27.5" r="1.5" fill="#1A1A1A"/>
-                <circle cx="25" cy="32.5" r="1.5" fill="#1A1A1A"/>
+        <!-- Enhanced Prism Logo Following Brand Guidelines -->
+        <svg class="prism-logo-loading" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="prismLoadingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#1A1A1A"/>
+                    <stop offset="100%" style="stop-color:#333333"/>
+                </linearGradient>
+            </defs>
+            
+            <!-- Musical Notes Input - representing raw music data -->
+            <g opacity="0.8">
+                <!-- Staff lines -->
+                <line x1="5" y1="20" x2="30" y2="20" stroke="#1A1A1A" stroke-width="0.5"/>
+                <line x1="5" y1="24" x2="30" y2="24" stroke="#1A1A1A" stroke-width="0.5"/>
+                <line x1="5" y1="28" x2="30" y2="28" stroke="#1A1A1A" stroke-width="0.5"/>
+                <line x1="5" y1="32" x2="30" y2="32" stroke="#1A1A1A" stroke-width="0.5"/>
+                <line x1="5" y1="36" x2="30" y2="36" stroke="#1A1A1A" stroke-width="0.5"/>
+                
+                <!-- Musical notes -->
+                <circle cx="10" cy="22" r="1.5" fill="#333333">
+                    <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="18" cy="30" r="1.5" fill="#333333">
+                    <animate attributeName="opacity" values="1;0.5;1" dur="2.2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="25" cy="26" r="1.5" fill="#333333">
+                    <animate attributeName="opacity" values="0.7;1;0.7" dur="1.8s" repeatCount="indefinite"/>
+                </circle>
+                
+                <!-- Note stems -->
+                <line x1="11.5" y1="22" x2="11.5" y2="15" stroke="#333333" stroke-width="1"/>
+                <line x1="19.5" y1="30" x2="19.5" y2="23" stroke="#333333" stroke-width="1"/>
+                <line x1="26.5" y1="26" x2="26.5" y2="19" stroke="#333333" stroke-width="1"/>
             </g>
             
-            <!-- 3D Triangular Prism - Main Element -->
-            <g class="prism-triangular-loader">
+            <!-- Triangular Prism - Main Processing Element -->
+            <g>
                 <!-- Front face - main triangle -->
-                <path 
-                    d="M45 55 L60 25 L75 55 Z" 
-                    fill="#1A1A1A" 
-                    stroke="#E50914" 
-                    stroke-width="2"
-                />
+                <polygon 
+                    points="50,15 35,45 65,45" 
+                    fill="url(#prismLoadingGrad)" 
+                    stroke="#1A1A1A" 
+                    stroke-width="1.5"
+                >
+                    <animateTransform 
+                        attributeName="transform" 
+                        attributeType="XML" 
+                        type="rotate" 
+                        from="0 50 30" 
+                        to="360 50 30" 
+                        dur="8s" 
+                        repeatCount="indefinite"
+                    />
+                </polygon>
                 
                 <!-- Back face - offset triangle for 3D effect -->
-                <path 
-                    d="M52 50 L67 20 L82 50 Z" 
-                    fill="#333333" 
-                    stroke="#E50914" 
-                    stroke-width="2"
-                />
+                <polygon 
+                    points="55,12 40,42 70,42" 
+                    fill="#1A1A1A" 
+                    stroke="#1A1A1A" 
+                    stroke-width="1" 
+                    opacity="0.9"
+                >
+                    <animateTransform 
+                        attributeName="transform" 
+                        attributeType="XML" 
+                        type="rotate" 
+                        from="0 55 27" 
+                        to="360 55 27" 
+                        dur="8s" 
+                        repeatCount="indefinite"
+                    />
+                </polygon>
                 
                 <!-- Connecting edges for 3D depth -->
-                <line x1="45" y1="55" x2="52" y2="50" stroke="#E50914" stroke-width="2"/>
-                <line x1="60" y1="25" x2="67" y2="20" stroke="#E50914" stroke-width="2"/>
-                <line x1="75" y1="55" x2="82" y2="50" stroke="#E50914" stroke-width="2"/>
+                <line x1="50" y1="15" x2="55" y2="12" stroke="#1A1A1A" stroke-width="1.5"/>
+                <line x1="35" y1="45" x2="40" y2="42" stroke="#1A1A1A" stroke-width="1.5"/>
+                <line x1="65" y1="45" x2="70" y2="42" stroke="#1A1A1A" stroke-width="1.5"/>
                 
-                <!-- Red accent line through center -->
-                <line x1="55" y1="40" x2="72" y2="35" stroke="#E50914" stroke-width="3">
-                    <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+                <!-- Analytics processing lines through the prism -->
+                <line x1="42" y1="32" x2="58" y2="29" stroke="#E50914" stroke-width="2.5">
+                    <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite"/>
+                </line>
+                <line x1="45" y1="38" x2="61" y2="35" stroke="#E50914" stroke-width="2" opacity="0.8">
+                    <animate attributeName="opacity" values="1;0.3;1" dur="1.8s" repeatCount="indefinite"/>
                 </line>
             </g>
             
-            <!-- Sin wave output - representing refined insights -->
-            <g opacity="0.8">
+            <!-- Sin Wave Analytics Output - representing refined insights -->
+            <g>
+                <!-- Primary analytics wave -->
                 <path 
-                    d="M90 30 Q95 25 100 30 Q105 35 110 30 Q115 25 120 30" 
+                    d="M75,20 Q85,15 95,20 Q105,25 115,20 Q125,15 135,20 Q145,25 155,20 Q165,15 175,20" 
                     stroke="#E50914" 
-                    stroke-width="2" 
+                    stroke-width="2.5" 
                     fill="none"
                 >
                     <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
                 </path>
+                
+                <!-- Secondary analytics wave -->
                 <path 
-                    d="M90 40 Q95 35 100 40 Q105 45 110 40 Q115 35 120 40" 
+                    d="M75,30 Q85,25 95,30 Q105,35 115,30 Q125,25 135,30 Q145,35 155,30 Q165,25 175,30" 
                     stroke="#E50914" 
                     stroke-width="2" 
-                    fill="none"
+                    fill="none" 
+                    opacity="0.7"
                 >
-                    <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="1;0.3;1" dur="2.2s" repeatCount="indefinite"/>
                 </path>
+                
+                <!-- Tertiary analytics wave -->
                 <path 
-                    d="M90 50 Q95 45 100 50 Q105 55 110 50 Q115 45 120 50" 
+                    d="M75,40 Q85,35 95,40 Q105,45 115,40 Q125,35 135,40 Q145,45 155,40 Q165,35 175,40" 
                     stroke="#E50914" 
-                    stroke-width="2" 
-                    fill="none"
+                    stroke-width="1.5" 
+                    fill="none" 
+                    opacity="0.5"
                 >
                     <animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" repeatCount="indefinite"/>
                 </path>
+                
+                <!-- Insight data points -->
+                <circle cx="85" cy="17" r="1.5" fill="#E50914">
+                    <animate attributeName="r" values="1;2;1" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="115" cy="23" r="1.5" fill="#E50914">
+                    <animate attributeName="r" values="1.5;1;1.5" dur="1.7s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="145" cy="17" r="1.5" fill="#E50914">
+                    <animate attributeName="r" values="1;2;1" dur="2.3s" repeatCount="indefinite"/>
+                </circle>
             </g>
+            
+            <!-- PRISM Text -->
+            <text 
+                x="100" 
+                y="65" 
+                text-anchor="middle" 
+                font-family="Arial, sans-serif" 
+                font-size="14" 
+                font-weight="500" 
+                letter-spacing="3px" 
+                fill="#1A1A1A"
+            >
+                PRISM
+            </text>
+            
+            <!-- Analytics Engine Subtext -->
+            <text 
+                x="100" 
+                y="75" 
+                text-anchor="middle" 
+                font-family="Arial, sans-serif" 
+                font-size="8" 
+                font-weight="400" 
+                letter-spacing="1px" 
+                fill="#666666"
+            >
+                ANALYTICS ENGINE
+            </text>
         </svg>
         
         <div class="prism-wordmark-loading">P R I S M</div>

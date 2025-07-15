@@ -18,6 +18,7 @@ import LeadsList from './components/LeadsList';
 import YouTubeIntegration from './components/YouTubeIntegration';
 import Settings from './components/Settings';
 import TrackAnalysisPage from './components/TrackAnalysisPage';
+import PrismLogo from './components/PrismLogo';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
@@ -38,67 +39,6 @@ const apiCall = async (endpoint, options = {}) => {
   
   return response.json();
 };
-
-// Prism Analytics Engine Logo Component with Triangular Prism
-const PrismLogo = ({ className = "h-8 w-8", animated = false }) => (
-  <div className={`${className} flex items-center justify-center`}>
-    <svg viewBox="0 0 100 40" className="w-full h-full">
-      {/* Musical notation lines - representing raw music data */}
-      <g>
-        <line x1="2" y1="12" x2="18" y2="12" stroke="#1A1A1A" strokeWidth="1"/>
-        <line x1="2" y1="16" x2="18" y2="16" stroke="#1A1A1A" strokeWidth="1"/>
-        <line x1="2" y1="20" x2="18" y2="20" stroke="#1A1A1A" strokeWidth="1"/>
-        <line x1="2" y1="24" x2="18" y2="24" stroke="#1A1A1A" strokeWidth="1"/>
-        <line x1="2" y1="28" x2="18" y2="28" stroke="#1A1A1A" strokeWidth="1"/>
-        {/* Musical notes */}
-        <circle cx="6" cy="14" r="1" fill="#1A1A1A"/>
-        <circle cx="12" cy="22" r="1" fill="#1A1A1A"/>
-        <circle cx="16" cy="18" r="1" fill="#1A1A1A"/>
-      </g>
-      
-      {/* Triangular prism - 3D appearance */}
-      <g className={animated ? "animate-pulse" : ""}>
-        {/* Front face - main triangle */}
-        <path 
-          d="M30 28 L40 12 L50 28 Z" 
-          fill="#1A1A1A" 
-          stroke="#E50914" 
-          strokeWidth="1"
-        />
-        {/* Back face - offset triangle */}
-        <path 
-          d="M35 25 L45 9 L55 25 Z" 
-          fill="#333333" 
-          stroke="#E50914" 
-          strokeWidth="1"
-        />
-        {/* Connecting edges to create 3D effect */}
-        <line x1="30" y1="28" x2="35" y2="25" stroke="#E50914" strokeWidth="1"/>
-        <line x1="40" y1="12" x2="45" y2="9" stroke="#E50914" strokeWidth="1"/>
-        <line x1="50" y1="28" x2="55" y2="25" stroke="#E50914" strokeWidth="1"/>
-        
-        {/* Red accent line through center */}
-        <line x1="35" y1="20" x2="45" y2="17" stroke="#E50914" strokeWidth="2"/>
-      </g>
-      
-      {/* Sin wave output - representing refined insights */}
-      <g className={animated ? "animate-pulse" : ""}>
-        <path 
-          d="M60 16 Q65 12 70 16 Q75 20 80 16 Q85 12 90 16 Q95 20 98 16" 
-          stroke="#E50914" 
-          strokeWidth="2" 
-          fill="none"
-        />
-        <path 
-          d="M60 24 Q65 20 70 24 Q75 28 80 24 Q85 20 90 24 Q95 28 98 24" 
-          stroke="#E50914" 
-          strokeWidth="2" 
-          fill="none"
-        />
-      </g>
-    </svg>
-  </div>
-);
 
 // Loading Component with Triangular Prism
 const PrismLoading = ({ message = "Loading..." }) => (
@@ -198,25 +138,6 @@ const formatRateLimit = (api, status) => {
         display: `${discogsUsedMin}/${discogsLimitMin}/min`,
         color: getUsageColor(discogsUsedMin, discogsLimitMin),
         description: '60 requests per minute'
-      };
-
-    // Enhanced APIs
-    case 'genius':
-      const geniusUsedMin = status.requests_this_minute || 0;
-      const geniusLimitMin = status.minute_limit || 100;
-      return {
-        display: `${geniusUsedMin}/${geniusLimitMin}/min`,
-        color: getUsageColor(geniusUsedMin, geniusLimitMin),
-        description: '100 requests per minute'
-      };
-
-    case 'musixmatch':
-      const musixUsedMin = status.requests_this_minute || 0;
-      const musixLimitMin = status.minute_limit || 20;
-      return {
-        display: `${musixUsedMin}/${musixLimitMin}/min`,
-        color: getUsageColor(musixUsedMin, musixLimitMin),
-        description: '20 requests per minute'
       };
 
     default:
@@ -342,7 +263,7 @@ const Navigation = ({ activeRoute, setActiveRoute, systemStatus }) => {
       {/* Prism Branding Footer - Fixed at bottom */}
       <div className="absolute bottom-4 left-4 right-4">
         <div className="text-center">
-          <PrismLogo className="h-8 w-16 mx-auto mb-2 opacity-60" />
+          <PrismLogo className="h-8 w-16 mx-auto mb-2 opacity-60" variant="light" showSubtext={false} />
           <p className="text-xs text-gray-700 tracking-widest">
             P R I S M
           </p>
@@ -403,7 +324,7 @@ const AppContent = () => {
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <PrismLogo className="h-12 w-20" />
+              <PrismLogo className="h-12 w-20" variant="light" showSubtext={false} />
               <div>
                 <h1 className="text-xl font-bold text-gray-900 tracking-widest">
                   P R I S M
