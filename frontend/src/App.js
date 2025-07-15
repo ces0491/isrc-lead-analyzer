@@ -7,7 +7,7 @@ import {
   Download, 
   BarChart3, 
   Youtube,
-  Settings,
+  Settings as SettingsIcon,
   Users,
   TrendingUp,
   AlertCircle,
@@ -156,7 +156,7 @@ const App = () => {
     { id: 'bulk', label: 'Bulk Processing', icon: Upload, component: BulkProcessor },
     { id: 'leads', label: 'Leads Database', icon: Database, component: LeadsList },
     { id: 'youtube', label: 'YouTube Integration', icon: Youtube, component: YouTubeIntegration },
-    { id: 'settings', label: 'Settings', icon: Settings, component: Settings },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon, component: Settings },
   ];
 
   const renderActiveComponent = () => {
