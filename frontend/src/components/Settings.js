@@ -112,12 +112,6 @@ const Settings = () => {
     return 'text-red-600';
   };
 
-  const formatApiKey = (key) => {
-    if (!key) return 'Not configured';
-    if (!showApiKeys) return '••••••••••••' + key.slice(-4);
-    return key;
-  };
-
   if (loading) {
     return (
       <div className="text-center py-12">

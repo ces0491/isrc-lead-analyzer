@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Database, 
   Search, 
   Filter, 
   Download, 
@@ -10,7 +9,6 @@ import {
   Globe,
   Music,
   TrendingUp,
-  Users,
   Eye,
   ChevronDown,
   ChevronUp
@@ -33,16 +31,11 @@ const LeadsList = () => {
     offset: 0,
     has_more: false
   });
-  const [selectedLeads, setSelectedLeads] = useState([]);
   const [expandedLead, setExpandedLead] = useState(null);
   const [sortBy, setSortBy] = useState('total_score');
   const [sortOrder, setSortOrder] = useState('desc');
 
-  useEffect(() => {
-    fetchLeads();
-  }, [filters, pagination.offset, sortBy, sortOrder]);
-
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -73,7 +66,11 @@ const LeadsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, pagination.limit, pagination.offset, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({

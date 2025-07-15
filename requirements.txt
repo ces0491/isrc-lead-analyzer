@@ -63,8 +63,8 @@ google-auth-oauthlib==1.1.0
 # Spotify Integration
 spotipy==2.23.0
 
-# Email Validation
-email-validator==2.1.0
+# Email Validation (Use latest stable version, avoiding yanked 2.1.0)
+email-validator>=2.1.1,<3.0.0
 
 # URL Processing
 furl==2.1.3

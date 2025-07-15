@@ -3,11 +3,7 @@ import {
   Users, 
   TrendingUp, 
   Youtube,
-  BarChart3,
   Music,
-  Globe,
-  AlertCircle,
-  CheckCircle,
   RefreshCw
 } from 'lucide-react';
 

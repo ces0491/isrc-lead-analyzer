@@ -5,14 +5,10 @@ import {
   BarChart3, 
   TrendingUp, 
   Users, 
-  Play, 
-  Eye,
   AlertCircle,
   CheckCircle,
   ExternalLink,
-  RefreshCw,
-  Calendar,
-  Clock
+  RefreshCw
 } from 'lucide-react';
 
 const YouTubeIntegration = () => {

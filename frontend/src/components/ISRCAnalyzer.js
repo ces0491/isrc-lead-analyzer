@@ -12,7 +12,6 @@ import {
   BarChart3,
   Save,
   RefreshCw,
-  Eye,
   Mail
 } from 'lucide-react';
 

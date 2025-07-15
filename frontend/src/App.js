@@ -1,34 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Music, 
   Search, 
   Database, 
   Upload, 
-  Download, 
   BarChart3, 
   Youtube,
-  Settings as SettingsIcon,
-  Users,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Play,
-  Pause,
-  FileText,
-  Filter,
-  Eye,
-  EyeOff,
-  Mail,
-  Globe,
-  ExternalLink,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  Key,
-  Zap,
-  Shield,
-  Save
+  Settings as SettingsIcon
 } from 'lucide-react';
 
 // Import components

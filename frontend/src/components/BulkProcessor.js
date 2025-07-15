@@ -4,7 +4,6 @@ import {
   FileText, 
   Download, 
   Play, 
-  Pause, 
   Youtube,
   AlertCircle,
   CheckCircle,
@@ -21,23 +20,14 @@ const BulkProcessor = () => {
   const [includeYoutube, setIncludeYoutube] = useState(true);
   const [batchSize, setBatchSize] = useState(10);
 
-  // File upload and parsing
-  const handleFileUpload = useCallback((event) => {
-    const uploadedFile = event.target.files[0];
-    if (!uploadedFile) return;
-
-    setFile(uploadedFile);
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      const content = e.target.result;
-      parseISRCs(content, uploadedFile.name);
-    };
-    
-    reader.readAsText(uploadedFile);
+  const isValidISRC = useCallback((isrc) => {
+    if (!isrc || typeof isrc !== 'string') return false;
+    const cleaned = isrc.replace(/[-\s_]/g, '').toUpperCase();
+    return cleaned.length === 12 && /^[A-Z]{2}[A-Z0-9]{3}[0-9]{2}[A-Z0-9]{5}$/.test(cleaned);
   }, []);
 
-  const parseISRCs = (content, filename) => {
+  // File parsing function
+  const parseISRCs = useCallback((content, filename) => {
     const lines = content.split('\n');
     const parsedISRCs = [];
     
@@ -69,13 +59,23 @@ const BulkProcessor = () => {
     // Remove duplicates
     const uniqueISRCs = [...new Set(parsedISRCs)];
     setIsrcs(uniqueISRCs);
-  };
+  }, [isValidISRC]);
 
-  const isValidISRC = (isrc) => {
-    if (!isrc || typeof isrc !== 'string') return false;
-    const cleaned = isrc.replace(/[-\s_]/g, '').toUpperCase();
-    return cleaned.length === 12 && /^[A-Z]{2}[A-Z0-9]{3}[0-9]{2}[A-Z0-9]{5}$/.test(cleaned);
-  };
+  // File upload and parsing
+  const handleFileUpload = useCallback((event) => {
+    const uploadedFile = event.target.files[0];
+    if (!uploadedFile) return;
+
+    setFile(uploadedFile);
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const content = e.target.result;
+      parseISRCs(content, uploadedFile.name);
+    };
+    
+    reader.readAsText(uploadedFile);
+  }, [parseISRCs]);
 
   // Drag and drop handling
   const handleDragOver = (e) => {
@@ -83,7 +83,7 @@ const BulkProcessor = () => {
     e.stopPropagation();
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -96,7 +96,7 @@ const BulkProcessor = () => {
       };
       reader.readAsText(droppedFile);
     }
-  };
+  }, [parseISRCs]);
 
   // Bulk processing
   const startBulkProcessing = async () => {
