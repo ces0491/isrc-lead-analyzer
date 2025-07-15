@@ -9,6 +9,7 @@ Flask-CORS==4.0.0
 # Database
 SQLAlchemy==2.0.23
 psycopg2-binary==2.9.9
+alembic>=1.12.0
 
 # HTTP Requests and API Integration
 requests==2.31.0
@@ -113,5 +114,5 @@ html5lib==1.1
 # redis==5.0.1alembic==1.13.1
 
 # Enhanced lyrics and metadata APIs (optional)
-# genius==3.0.0
-# musicbrainz-ngs==0.7.1
+genius==3.0.0
+musicbrainz-ngs==0.7.1
