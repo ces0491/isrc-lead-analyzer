@@ -65,10 +65,24 @@
         }
         
         .prism-logo-loading {
-            width: 80px;
+            width: 120px;
             height: 80px;
             margin-bottom: 2rem;
             animation: prism-pulse 2s ease-in-out infinite;
+        }
+        
+        /* Triangular Prism Loading Animation */
+        .prism-triangular-loader {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 1rem;
+            position: relative;
+            animation: prism-rotate 2s linear infinite;
+        }
+        
+        .prism-triangular-loader svg {
+            width: 100%;
+            height: 100%;
         }
         
         .prism-wordmark-loading {
@@ -87,28 +101,58 @@
             margin-bottom: 2rem;
         }
         
-        .prism-spinner {
-            width: 32px;
-            height: 32px;
-            border: 2px solid var(--prism-light-gray);
-            border-top: 2px solid var(--prism-red);
-            border-radius: 50%;
-            animation: prism-spin 1s linear infinite;
+        .prism-progress-dots {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
         }
+        
+        .prism-progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--prism-red);
+            animation: prism-dot-bounce 1.4s ease-in-out infinite both;
+        }
+        
+        .prism-progress-dot:nth-child(1) { animation-delay: -0.32s; }
+        .prism-progress-dot:nth-child(2) { animation-delay: -0.16s; }
+        .prism-progress-dot:nth-child(3) { animation-delay: 0s; }
         
         @keyframes prism-pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.05); }
+            0%, 100% { 
+                opacity: 1; 
+                transform: scale(1); 
+            }
+            50% { 
+                opacity: 0.8; 
+                transform: scale(1.05); 
+            }
         }
         
-        @keyframes prism-spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @keyframes prism-rotate {
+            0% { 
+                transform: rotateY(0deg); 
+            }
+            100% { 
+                transform: rotateY(360deg); 
+            }
+        }
+        
+        @keyframes prism-dot-bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
         }
         
         /* Hide loading screen when React app loads */
         .prism-app-loaded .prism-loading-screen {
-            display: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
         }
         
         /* No JavaScript fallback */
@@ -129,36 +173,124 @@
         #root {
             min-height: 100vh;
         }
+        
+        /* Loading progress indicator */
+        .prism-loading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--prism-light-gray);
+            z-index: 10000;
+        }
+        
+        .prism-loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--prism-red), #B8070F);
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: prism-progress-shimmer 2s infinite;
+        }
+        
+        @keyframes prism-progress-shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
     </style>
 </head>
 <body>
-    <!-- Prism Loading Screen -->
+    <!-- Loading Progress Bar -->
+    <div class="prism-loading-progress" id="prism-progress">
+        <div class="prism-loading-progress-bar" id="prism-progress-bar"></div>
+    </div>
+
+    <!-- Prism Loading Screen with Triangular Prism -->
     <div class="prism-loading-screen" id="prism-loading">
-        <!-- Prism Logo SVG -->
-        <svg class="prism-logo-loading" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <!-- Musical notation lines -->
-            <g opacity="0.6">
-                <line x1="10" y1="20" x2="35" y2="20" stroke="#1A1A1A" stroke-width="1"/>
-                <line x1="10" y1="25" x2="35" y2="25" stroke="#1A1A1A" stroke-width="1"/>
-                <line x1="10" y1="30" x2="35" y2="30" stroke="#1A1A1A" stroke-width="1"/>
-                <circle cx="15" cy="22.5" r="1.5" fill="#1A1A1A"/>
-                <circle cx="25" cy="27.5" r="1.5" fill="#1A1A1A"/>
+        <!-- Enhanced Prism Logo with Triangular Prism Animation -->
+        <svg class="prism-logo-loading" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+            <!-- Musical notation lines - representing raw music data -->
+            <g opacity="0.7">
+                <line x1="5" y1="20" x2="30" y2="20" stroke="#1A1A1A" stroke-width="1"/>
+                <line x1="5" y1="25" x2="30" y2="25" stroke="#1A1A1A" stroke-width="1"/>
+                <line x1="5" y1="30" x2="30" y2="30" stroke="#1A1A1A" stroke-width="1"/>
+                <line x1="5" y1="35" x2="30" y2="35" stroke="#1A1A1A" stroke-width="1"/>
+                <circle cx="10" cy="22.5" r="1.5" fill="#1A1A1A"/>
+                <circle cx="20" cy="27.5" r="1.5" fill="#1A1A1A"/>
+                <circle cx="25" cy="32.5" r="1.5" fill="#1A1A1A"/>
             </g>
             
-            <!-- Triangular prism -->
-            <path d="M40 25 L65 40 L65 65 L40 50 Z" fill="#1A1A1A" stroke="#E50914" stroke-width="2"/>
-            <path d="M40 25 L60 10 L85 25 L65 40 Z" fill="#333333" stroke="#E50914" stroke-width="2"/>
-            <path d="M65 40 L85 25 L85 50 L65 65 Z" fill="#666666" stroke="#E50914" stroke-width="2"/>
+            <!-- 3D Triangular Prism - Main Element -->
+            <g class="prism-triangular-loader">
+                <!-- Front face - main triangle -->
+                <path 
+                    d="M45 55 L60 25 L75 55 Z" 
+                    fill="#1A1A1A" 
+                    stroke="#E50914" 
+                    stroke-width="2"
+                />
+                
+                <!-- Back face - offset triangle for 3D effect -->
+                <path 
+                    d="M52 50 L67 20 L82 50 Z" 
+                    fill="#333333" 
+                    stroke="#E50914" 
+                    stroke-width="2"
+                />
+                
+                <!-- Connecting edges for 3D depth -->
+                <line x1="45" y1="55" x2="52" y2="50" stroke="#E50914" stroke-width="2"/>
+                <line x1="60" y1="25" x2="67" y2="20" stroke="#E50914" stroke-width="2"/>
+                <line x1="75" y1="55" x2="82" y2="50" stroke="#E50914" stroke-width="2"/>
+                
+                <!-- Red accent line through center -->
+                <line x1="55" y1="40" x2="72" y2="35" stroke="#E50914" stroke-width="3">
+                    <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+                </line>
+            </g>
             
-            <!-- Sin wave output -->
-            <path d="M85 25 Q90 20 95 25 Q100 30 105 25" stroke="#E50914" stroke-width="2" fill="none"/>
-            <path d="M85 35 Q90 30 95 35 Q100 40 105 35" stroke="#E50914" stroke-width="2" fill="none"/>
-            <path d="M85 45 Q90 40 95 45 Q100 50 105 45" stroke="#E50914" stroke-width="2" fill="none"/>
+            <!-- Sin wave output - representing refined insights -->
+            <g opacity="0.8">
+                <path 
+                    d="M90 30 Q95 25 100 30 Q105 35 110 30 Q115 25 120 30" 
+                    stroke="#E50914" 
+                    stroke-width="2" 
+                    fill="none"
+                >
+                    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+                </path>
+                <path 
+                    d="M90 40 Q95 35 100 40 Q105 45 110 40 Q115 35 120 40" 
+                    stroke="#E50914" 
+                    stroke-width="2" 
+                    fill="none"
+                >
+                    <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+                </path>
+                <path 
+                    d="M90 50 Q95 45 100 50 Q105 55 110 50 Q115 45 120 50" 
+                    stroke="#E50914" 
+                    stroke-width="2" 
+                    fill="none"
+                >
+                    <animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" repeatCount="indefinite"/>
+                </path>
+            </g>
         </svg>
         
         <div class="prism-wordmark-loading">P R I S M</div>
         <div class="prism-subtitle-loading">Analytics Engine</div>
-        <div class="prism-spinner"></div>
+        
+        <!-- Loading Animation Dots -->
+        <div class="prism-progress-dots">
+            <div class="prism-progress-dot"></div>
+            <div class="prism-progress-dot"></div>
+            <div class="prism-progress-dot"></div>
+        </div>
+        
+        <p style="margin-top: 1rem; color: var(--prism-medium-gray); font-size: 0.75rem; text-align: center;">
+            Transforming music data into actionable insights
+        </p>
     </div>
     
     <!-- No JavaScript Fallback -->
@@ -180,21 +312,55 @@
     
     <!-- Prism Analytics Script -->
     <script>
+        // Progressive loading with realistic progress
+        let progress = 0;
+        const progressBar = document.getElementById('prism-progress-bar');
+        const loadingScreen = document.getElementById('prism-loading');
+        
+        // Simulate realistic loading progress
+        function updateProgress() {
+            if (progress < 90) {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                
+                if (progressBar) {
+                    progressBar.style.width = progress + '%';
+                }
+                
+                setTimeout(updateProgress, 100 + Math.random() * 200);
+            }
+        }
+        
+        // Start progress animation
+        updateProgress();
+        
         // Hide loading screen when React app mounts
         window.addEventListener('load', function() {
+            // Complete the progress bar
+            if (progressBar) {
+                progressBar.style.width = '100%';
+            }
+            
             setTimeout(function() {
-                const loadingScreen = document.getElementById('prism-loading');
                 const body = document.body;
                 
                 if (loadingScreen) {
                     loadingScreen.style.opacity = '0';
-                    loadingScreen.style.transition = 'opacity 0.3s ease-out';
+                    loadingScreen.style.transform = 'scale(0.95)';
+                    loadingScreen.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
                     
                     setTimeout(function() {
                         body.classList.add('prism-app-loaded');
-                    }, 300);
+                        
+                        // Hide progress bar
+                        const progressElement = document.getElementById('prism-progress');
+                        if (progressElement) {
+                            progressElement.style.opacity = '0';
+                            setTimeout(() => progressElement.remove(), 500);
+                        }
+                    }, 500);
                 }
-            }, 1000); // Show loading for at least 1 second for branding
+            }, 800); // Show loading for at least 800ms for branding impact
         });
         
         // Service Worker Registration (for future PWA features)
@@ -213,6 +379,25 @@
         // Global error handling
         window.addEventListener('error', function(event) {
             console.error('Prism Analytics Engine Error:', event.error);
+            
+            // Hide loading screen on error
+            if (loadingScreen) {
+                loadingScreen.innerHTML = `
+                    <div style="text-align: center; color: var(--prism-red);">
+                        <h2 style="margin-bottom: 1rem;">Loading Error</h2>
+                        <p>Please refresh the page to try again.</p>
+                        <button onclick="location.reload()" style="
+                            background: var(--prism-red); 
+                            color: white; 
+                            border: none; 
+                            padding: 0.5rem 1rem; 
+                            border-radius: 0.25rem; 
+                            margin-top: 1rem; 
+                            cursor: pointer;
+                        ">Refresh Page</button>
+                    </div>
+                `;
+            }
         });
         
         // Global analytics tracking (placeholder for future implementation)
@@ -222,8 +407,47 @@
                     window.gtag('event', event, properties);
                 }
                 console.log('Prism Analytics:', event, properties);
+            },
+            
+            // Track page load performance
+            trackPerformance: function() {
+                if (window.performance && window.performance.timing) {
+                    const timing = window.performance.timing;
+                    const loadTime = timing.loadEventEnd - timing.navigationStart;
+                    
+                    this.track('page_load_time', {
+                        load_time: loadTime,
+                        dom_ready: timing.domContentLoadedEventEnd - timing.navigationStart,
+                        first_paint: timing.responseStart - timing.navigationStart
+                    });
+                }
             }
         };
+        
+        // Track performance when page loads
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                window.prismAnalytics.trackPerformance();
+            }, 1000);
+        });
+        
+        // Prefetch critical resources
+        function prefetchResources() {
+            const criticalResources = [
+                '/api/status',
+                '/api/dashboard/stats'
+            ];
+            
+            criticalResources.forEach(url => {
+                const link = document.createElement('link');
+                link.rel = 'prefetch';
+                link.href = url;
+                document.head.appendChild(link);
+            });
+        }
+        
+        // Start prefetching after initial load
+        setTimeout(prefetchResources, 2000);
     </script>
 </body>
 </html>

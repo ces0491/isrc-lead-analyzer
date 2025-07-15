@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Music, 
   Search, 
@@ -31,7 +31,15 @@ import {
   Save
 } from 'lucide-react';
 
-// API Configuration for separate deployment
+// Import components
+import Dashboard from './components/Dashboard';
+import ISRCAnalyzer from './components/ISRCAnalyzer';
+import BulkProcessor from './components/BulkProcessor';
+import LeadsList from './components/LeadsList';
+import YouTubeIntegration from './components/YouTubeIntegration';
+import Settings from './components/Settings';
+
+// API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
 // Utility function for API calls
@@ -52,8 +60,8 @@ const apiCall = async (endpoint, options = {}) => {
   return response.json();
 };
 
-// Prism Analytics Engine Logo Component
-const PrismLogo = ({ className = "h-8 w-8" }) => (
+// Prism Analytics Engine Logo Component with Triangular Prism
+const PrismLogo = ({ className = "h-8 w-8", animated = false }) => (
   <div className={`${className} flex items-center justify-center`}>
     <svg viewBox="0 0 100 40" className="w-full h-full">
       {/* Musical notation lines - representing raw music data */}
@@ -69,19 +77,33 @@ const PrismLogo = ({ className = "h-8 w-8" }) => (
         <circle cx="16" cy="18" r="1" fill="#1A1A1A"/>
       </g>
       
-      {/* Triangular prism - clean geometric design */}
-      <g>
-        {/* Main triangle - solid black */}
+      {/* Triangular prism - 3D appearance */}
+      <g className={animated ? "animate-pulse" : ""}>
+        {/* Front face - main triangle */}
         <path 
           d="M30 28 L40 12 L50 28 Z" 
           fill="#1A1A1A" 
+          stroke="#E50914" 
+          strokeWidth="1"
         />
+        {/* Back face - offset triangle */}
+        <path 
+          d="M35 25 L45 9 L55 25 Z" 
+          fill="#333333" 
+          stroke="#E50914" 
+          strokeWidth="1"
+        />
+        {/* Connecting edges to create 3D effect */}
+        <line x1="30" y1="28" x2="35" y2="25" stroke="#E50914" strokeWidth="1"/>
+        <line x1="40" y1="12" x2="45" y2="9" stroke="#E50914" strokeWidth="1"/>
+        <line x1="50" y1="28" x2="55" y2="25" stroke="#E50914" strokeWidth="1"/>
+        
         {/* Red accent line through center */}
-        <line x1="35" y1="20" x2="45" y2="20" stroke="#E50914" strokeWidth="2"/>
+        <line x1="35" y1="20" x2="45" y2="17" stroke="#E50914" strokeWidth="2"/>
       </g>
       
       {/* Sin wave output - representing refined insights */}
-      <g>
+      <g className={animated ? "animate-pulse" : ""}>
         <path 
           d="M60 16 Q65 12 70 16 Q75 20 80 16 Q85 12 90 16 Q95 20 98 16" 
           stroke="#E50914" 
@@ -99,377 +121,14 @@ const PrismLogo = ({ className = "h-8 w-8" }) => (
   </div>
 );
 
-const Dashboard = ({ systemStatus }) => {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  const fetchDashboardStats = async () => {
-    try {
-      const data = await apiCall('/dashboard/stats');
-      setStats(data);
-    } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading dashboard...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-wide">DASHBOARD</h2>
-        <p className="text-gray-600">Analytics overview and lead generation insights</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <Users className="h-8 w-8 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-700 tracking-wide">TOTAL ARTISTS</p>
-              <p className="text-2xl font-semibold text-gray-900 font-mono">
-                {stats?.total_artists || 0}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <TrendingUp className="h-8 w-8 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-700 tracking-wide">A-TIER LEADS</p>
-              <p className="text-2xl font-semibold text-gray-900 font-mono">
-                {stats?.tier_distribution?.A || 0}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <Youtube className="h-8 w-8 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-700 tracking-wide">YOUTUBE CHANNELS</p>
-              <p className="text-2xl font-semibold text-gray-900 font-mono">
-                {stats?.youtube_statistics?.artists_with_youtube || 0}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <BarChart3 className="h-8 w-8 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-700 tracking-wide">AVG. SCORE</p>
-              <p className="text-2xl font-semibold text-gray-900 font-mono">
-                {stats ? Math.round(
-                  (stats.tier_distribution?.A * 85 + 
-                   stats.tier_distribution?.B * 65 + 
-                   stats.tier_distribution?.C * 45 + 
-                   stats.tier_distribution?.D * 25) / 
-                  Math.max(stats.total_artists, 1)
-                ) : 0}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* YouTube Integration Status */}
-      {systemStatus?.youtube_integration && (
-        <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center space-x-3">
-            <Youtube className="h-6 w-6 text-red-600" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 tracking-wide">YOUTUBE INTEGRATION</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                {systemStatus.youtube_integration.api_key_configured ? (
-                  <>
-                    <span className="text-green-600 font-medium">Active</span> - 
-                    Quota used today: <span className="font-mono">{systemStatus.youtube_integration.daily_quota_used || 0}</span> / <span className="font-mono">{systemStatus.youtube_integration.daily_quota_limit || 10000}</span>
-                  </>
-                ) : (
-                  <span className="text-red-600 font-medium">Configure YouTube API key to enable YouTube features</span>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 tracking-wide">LEAD DISTRIBUTION BY TIER</h3>
-        <div className="space-y-3">
-          {['A', 'B', 'C', 'D'].map(tier => {
-            const count = stats?.tier_distribution?.[tier] || 0;
-            const total = stats?.total_artists || 1;
-            const percentage = (count / total) * 100;
-            
-            return (
-              <div key={tier} className="flex items-center">
-                <div className="w-16 text-sm font-medium text-gray-600 tracking-wide">TIER {tier}</div>
-                <div className="flex-1 mx-4">
-                  <div className="bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${
-                        tier === 'A' ? 'bg-green-500' :
-                        tier === 'B' ? 'bg-red-600' :
-                        tier === 'C' ? 'bg-yellow-500' : 'bg-gray-500'
-                      }`}
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="w-16 text-sm text-gray-600 text-right font-mono">
-                  {count} ({percentage.toFixed(1)}%)
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ISRCAnalyzer = () => {
-  const [isrc, setIsrc] = useState('');
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [includeYoutube, setIncludeYoutube] = useState(true);
-
-  const analyzeISRC = async () => {
-    if (!isrc.trim()) return;
-    
-    setLoading(true);
-    setResult(null);
-    
-    try {
-      const data = await apiCall('/analyze-isrc', {
-        method: 'POST',
-        body: JSON.stringify({ 
-          isrc: isrc.trim(), 
-          save_to_db: true,
-          include_youtube: includeYoutube 
-        })
-      });
-      
-      setResult(data);
-    } catch (error) {
-      console.error('Failed to analyze ISRC:', error);
-      setResult({ status: 'error', error: 'Failed to analyze ISRC' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      analyzeISRC();
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-wide">ISRC ANALYZER</h2>
-        <p className="text-gray-600">Advanced track analysis and lead discovery</p>
-      </div>
-
-      {/* Input Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="isrc" className="block text-sm font-medium text-gray-900 mb-2 tracking-wide">
-              ISRC CODE
-            </label>
-            <input
-              type="text"
-              id="isrc"
-              value={isrc}
-              onChange={(e) => setIsrc(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="e.g., USRC17607839"
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 font-mono"
-            />
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={includeYoutube}
-                onChange={(e) => setIncludeYoutube(e.target.checked)}
-                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-600">Include YouTube data collection</span>
-            </label>
-          </div>
-
-          <button
-            onClick={analyzeISRC}
-            disabled={loading || !isrc.trim()}
-            className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium tracking-wide"
-          >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                ANALYZING...
-              </div>
-            ) : (
-              'ANALYZE ISRC'
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Results Section */}
-      {result && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 tracking-wide">ANALYSIS RESULTS</h3>
-          
-          {result.status === 'completed' ? (
-            <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2 tracking-wide">ARTIST INFORMATION</h4>
-                  <p className="text-lg font-semibold text-red-600">
-                    {result.artist_data?.name || 'Unknown Artist'}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {result.track_data?.title || 'Unknown Track'}
-                  </p>
-                  <p className="text-sm text-gray-700 font-mono">
-                    Label: {result.track_data?.label || 'Unknown'}
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2 tracking-wide">LEAD SCORE</h4>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-3xl font-bold text-gray-900 font-mono">
-                      {result.scores?.total_score || 0}
-                    </span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      result.scores?.tier === 'A' ? 'bg-green-100 text-green-800' :
-                      result.scores?.tier === 'B' ? 'bg-red-100 text-red-800' :
-                      result.scores?.tier === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      TIER {result.scores?.tier || 'D'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1 font-mono">
-                    Confidence: {result.scores?.confidence || 0}%
-                  </p>
-                </div>
-              </div>
-
-              {/* Score Breakdown */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3 tracking-wide">SCORE BREAKDOWN</h4>
-                <div className="space-y-2">
-                  {[
-                    { label: 'Independence', score: result.scores?.independence_score, color: 'bg-red-600' },
-                    { label: 'Opportunity', score: result.scores?.opportunity_score, color: 'bg-green-500' },
-                    { label: 'Geographic', score: result.scores?.geographic_score, color: 'bg-gray-600' }
-                  ].map(({ label, score, color }) => (
-                    <div key={label} className="flex items-center">
-                      <div className="w-24 text-sm text-gray-600 tracking-wide">{label.toUpperCase()}</div>
-                      <div className="flex-1 mx-4">
-                        <div className="bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${color}`}
-                            style={{ width: `${score || 0}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      <div className="w-12 text-sm text-gray-600 text-right font-mono">{score || 0}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* YouTube Integration Results */}
-              {result.youtube_integration?.enabled && (
-                <div className="border-t pt-4">
-                  <h4 className="font-medium text-gray-900 mb-3 flex items-center tracking-wide">
-                    <Youtube className="h-4 w-4 mr-2 text-red-600" />
-                    YOUTUBE ANALYSIS
-                  </h4>
-                  {result.youtube_integration.data_found ? (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <p className="text-sm text-green-600 font-medium mb-2">✅ YouTube channel found!</p>
-                      <p className="text-xs text-gray-600">
-                        YouTube data has been integrated into the opportunity scoring.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <p className="text-sm text-yellow-700 font-medium mb-1">
-                        ⚠️ No YouTube channel found
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        This represents a significant YouTube opportunity for the artist.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Data Sources */}
-              <div className="border-t pt-4">
-                <h4 className="font-medium text-gray-900 mb-2 tracking-wide">DATA SOURCES</h4>
-                <div className="flex flex-wrap gap-2">
-                  {result.data_sources_used?.map(source => (
-                    <span key={source} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-900">
-                      {source === 'youtube' ? (
-                        <Youtube className="h-3 w-3 mr-1 text-red-500" />
-                      ) : null}
-                      {source.charAt(0).toUpperCase() + source.slice(1)}
-                    </span>
-                  )) || []}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-              <p className="text-red-600 font-medium">Analysis Failed</p>
-              <p className="text-sm text-gray-600">{result.error || 'Unknown error occurred'}</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
+// Loading Component with Triangular Prism
+const PrismLoading = ({ message = "Loading..." }) => (
+  <div className="text-center py-12">
+    <PrismLogo className="h-16 w-32 mx-auto mb-4" animated={true} />
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+    <p className="text-gray-600">{message}</p>
+  </div>
+);
 
 const App = () => {
   const [systemStatus, setSystemStatus] = useState(null);
@@ -494,6 +153,10 @@ const App = () => {
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
     { id: 'analyze', label: 'ISRC Analyzer', icon: Search, component: ISRCAnalyzer },
+    { id: 'bulk', label: 'Bulk Processing', icon: Upload, component: BulkProcessor },
+    { id: 'leads', label: 'Leads Database', icon: Database, component: LeadsList },
+    { id: 'youtube', label: 'YouTube Integration', icon: Youtube, component: YouTubeIntegration },
+    { id: 'settings', label: 'Settings', icon: Settings, component: Settings },
   ];
 
   const renderActiveComponent = () => {
@@ -507,10 +170,7 @@ const App = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Prism Analytics Engine...</p>
-        </div>
+        <PrismLoading message="Loading Prism Analytics Engine..." />
       </div>
     );
   }

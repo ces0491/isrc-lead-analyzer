@@ -1,10 +1,14 @@
 {
-  "name": "isrc-analyzer-frontend",
+  "name": "prism-analytics-engine-frontend",
   "version": "1.0.0",
-  "description": "Frontend for ISRC Analyzer - Lead generation tool for independent music services",
+  "description": "Prism Analytics Engine - Frontend for ISRC-based lead generation with YouTube integration",
   "author": "Precise Digital",
   "private": true,
   "homepage": "https://isrc-analyzer-frontend.onrender.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/precise-digital/prism-analytics-engine"
+  },
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
@@ -21,14 +25,31 @@
     "build:production": "REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-https://isrc-analyzer-api.onrender.com/api} react-scripts build",
     "build:development": "REACT_APP_API_BASE_URL=http://localhost:5000/api react-scripts build",
     "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "test:ci": "CI=true react-scripts test --coverage --watchAll=false",
     "eject": "react-scripts eject",
-    "clean": "rm -rf node_modules package-lock.json && npm install"
+    "clean": "rm -rf node_modules package-lock.json && npm install",
+    "clean:build": "rm -rf build",
+    "analyze": "npm run build && npx source-map-explorer 'build/static/js/*.js'",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+    "format": "prettier --write src/**/*.{js,jsx,ts,tsx,css,md}",
+    "type-check": "tsc --noEmit",
+    "prepare": "husky install",
+    "serve": "npx serve -s build -l 3000",
+    "docker:build": "docker build -t prism-analytics-frontend .",
+    "docker:run": "docker run -p 3000:3000 prism-analytics-frontend"
   },
   "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
+    ],
+    "rules": {
+      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "no-console": ["warn", { "allow": ["warn", "error"] }],
+      "prefer-const": "warn"
+    }
   },
   "browserslist": {
     "production": [
@@ -45,6 +66,67 @@
   "devDependencies": {
     "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32"
-  }
+    "postcss": "^8.4.32",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "typescript": "^4.9.5",
+    "prettier": "^3.1.1",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "source-map-explorer": "^2.5.3",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.{css,md}": [
+      "prettier --write"
+    ]
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx,ts,tsx}",
+      "!src/index.js",
+      "!src/reportWebVitals.js",
+      "!src/**/*.test.{js,jsx,ts,tsx}",
+      "!src/**/*.stories.{js,jsx,ts,tsx}"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    }
+  },
+  "proxy": "http://localhost:5000",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "prism",
+    "analytics",
+    "music-industry",
+    "lead-generation",
+    "youtube-integration",
+    "precise-digital",
+    "independent-artists",
+    "music-data",
+    "isrc-analysis",
+    "react",
+    "tailwindcss"
+  ],
+  "license": "MIT"
 }

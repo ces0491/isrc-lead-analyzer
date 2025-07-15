@@ -1,20 +1,19 @@
-# Precise Digital Lead Generation Tool - Python Dependencies
+# Precise Digital Lead Generation Tool - Clean Requirements
 # Prism Analytics Engine by Precise Digital
-# Complete dependency list for ISRC-based lead generation system
+# Python 3.11 compatible versions
 
 # Core Web Framework
 Flask==3.0.0
 Flask-CORS==4.0.0
 
-# Database and ORM
+# Database
 SQLAlchemy==2.0.23
-psycopg2-binary==2.9.9  # PostgreSQL adapter (production)
+psycopg2-binary==2.9.9
 
-# HTTP Requests and APIs
+# HTTP Requests and API Integration
 requests==2.31.0
-urllib3==2.1.0
 
-# Data Processing and Analysis
+# Data Processing
 pandas==2.1.4
 numpy==1.26.2
 
@@ -22,584 +21,93 @@ numpy==1.26.2
 beautifulsoup4==4.12.2
 lxml==4.9.4
 
-# Date and Time Handling
+# Date/Time Handling
 python-dateutil==2.8.2
 
-# Environment Variables and Configuration
+# Configuration
 python-dotenv==1.0.0
 
-# Validation and Data Types
+# Data Validation
 validators==0.22.0
 
-# JSON and Data Serialization
-orjson==3.9.10  # Fast JSON parsing
+# JSON Processing
+orjson==3.9.10
 
 # Production Web Server
-gunicorn==21.2.0  # WSGI server for production
-
-# Development and Testing
-pytest==7.4.3
-pytest-flask==1.3.0
-pytest-cov==4.1.0
-
-# Code Quality
-flake8==6.1.0
-black==23.11.0
-
-# Logging and Monitoring
-structlog==23.2.0
-
-# Security
-cryptography==41.0.8
+gunicorn==21.2.0
 
 # File Processing
-openpyxl==3.1.2  # Excel file support
+openpyxl==3.1.2
+xlsxwriter==3.1.9
 
-# Audio/Music Specific Libraries
-mutagen==1.47.0  # Audio metadata (optional)
+# Audio Metadata (optional)
+mutagen==1.47.0
 
-# Rate Limiting and Caching
+# Caching
 cachetools==5.3.2
 
-# Data Validation
+# Data Validation Framework
 pydantic==2.5.1
 
-# API Documentation (optional)
-flask-restx==1.3.0
-
-# Environment Detection
-python-decouple==3.8
-
-# Time Zone Support
-pytz==2023.3
-
-# Progress Bars for Batch Processing
+# Progress Bars
 tqdm==4.66.1
 
 # Text Processing
 unidecode==1.3.7
 
-# Async Support (if needed for future enhancements)
-aiohttp==3.9.1
-asyncio==3.4.3
-
-# Additional Utilities
-click==8.1.7  # Command line interface
-colorama==0.4.6  # Colored terminal output
-
-# YouTube API specific
+# YouTube API
 google-api-python-client==2.108.0
 google-auth-httplib2==0.1.1
 google-auth-oauthlib==1.1.0
 
-# Spotify API enhancements
-spotipy==2.23.0  # Alternative Spotify library (optional)
+# Spotify Integration
+spotipy==2.23.0
 
-# Data Export
-xlsxwriter==3.1.9  # Excel export functionality
-
-# Email validation (enhanced)
+# Email Validation
 email-validator==2.1.0
 
-# URL parsing and validation
+# URL Processing
 furl==2.1.3
 
-# Performance monitoring
-psutil==5.9.6
+# CSV Processing
+chardet==5.2.0
 
-# Development Dependencies (optional)
-ipython==8.17.2
-jupyter==1.0.0
-
-# Memory profiling (development)
-memory-profiler==0.61.0
-
-# Testing utilities
-factory-boy==3.3.0
-faker==20.1.0
-
-# API rate limiting
-ratelimit==2.2.1
-
-# Background task processing (future enhancement)
-celery==5.3.4
-redis==5.0.1
-
-# Health checks
-healthcheck==1.3.3
-
-# Configuration management
-dynaconf==3.2.4
-
-# Performance timing
-line-profiler==4.1.1
-
-# CSV processing
-chardet==5.2.0  # Character encoding detection
-
-# Network utilities
-netaddr==0.9.0
-
-# System information
-distro==1.8.0
-
-# Unicode handling
-unicodedata2==15.1.0
-
-# Database migrations (future enhancement)
-alembic==1.13.0
-
-# Scheduling (future enhancement)
-schedule==1.2.0
-
-# Image processing (for artist thumbnails)
-Pillow==10.1.0
-
-# HTTP status codes
-http-status==0.2.8
-
-# JSON schema validation
-jsonschema==4.20.0
-
-# Regular expressions (enhanced)
+# Regular Expressions (enhanced)
 regex==2023.10.3
 
-# Path manipulation
-pathlib2==2.3.7
+# Security (Python 3.11 compatible version)
+cryptography==42.0.8
 
-# File watching (development)
-watchdog==3.0.0
+# Time Zone Support
+pytz==2023.3
 
-# Documentation generation
-Sphinx==7.2.6
-sphinx-rtd-theme==1.3.0
+# Logging
+structlog==23.2.0
 
-# API testing
-tavern==2.6.1
-
-# Load testing
-locust==2.17.0
-
-# Error tracking (production)
-sentry-sdk[flask]==1.38.0
-
-# Metrics collection
-prometheus-client==0.19.0
-
-# SSL/TLS support
-pyOpenSSL==23.3.0
-
-# Internationalization
-Babel==2.13.1
-
-# Feature flags
-flag==1.4.1
-
-# Environment-specific configurations
-environs==10.0.0
-
-# Developer tools
-pre-commit==3.6.0
-isort==5.12.0
-mypy==1.7.1
-
-# Documentation
-mkdocs==1.5.3
-mkdocs-material==9.4.8
-
-# Version information
-setuptools-scm==8.0.4
-
-# Package distribution
-wheel==0.42.0
-twine==4.0.2
-
-# Virtual environment
-virtualenv==20.25.0
-
-# IDE support
-python-language-server==0.36.2
-pylsp-mypy==0.6.7
-
-# Git hooks
-gitpython==3.1.40
-
-# Cross-platform compatibility
-pathspec==0.11.2
-
-# Process management
-supervisor==4.2.5  # Production process management
-
-# Reverse proxy (if needed)
-nginx-python-module==0.1.0
-
-# Container support
-docker==6.1.3
-
-# Cloud deployment
-boto3==1.34.0  # AWS SDK
-azure-storage-blob==12.19.0  # Azure support
-google-cloud-storage==2.10.0  # Google Cloud support
-
-# Production monitoring
-newrelic==9.2.0  # New Relic APM
-datadog==0.47.0  # Datadog monitoring
-
-# Database pooling
-psycopg2-pool==1.1
-SQLAlchemy-Utils==0.41.1
-
-# Backup and recovery
-pg-dump==0.1.0  # PostgreSQL backup
-
-# API versioning
-flask-apispec==0.11.4
-
-# Content compression
-flask-compress==1.14
-
-# Security headers
-flask-talisman==1.1.0
-
-# CSRF protection
-flask-wtf==1.2.1
-WTForms==3.1.1
-
-# Session management
-flask-session==0.5.0
-
-# User authentication (future)
-flask-login==0.6.3
-flask-bcrypt==1.0.1
-
-# Email sending (notifications)
-flask-mail==0.9.1
-
-# Template caching
-flask-caching==2.1.0
-
-# Background jobs
-flask-rq==0.2
-
-# Admin interface (optional)
-flask-admin==1.6.1
-
-# Database browser (development)
-sqlite-web==0.6.2
-
-# Performance profiling
-flask-profiler==1.8.1
-
-# API documentation UI
-flasgger==0.9.7.1
-
-# YAML configuration
+# YAML Configuration
 PyYAML==6.0.1
 
-# HTML/XML parsing
+# HTML Parsing
 html5lib==1.1
 
-# PDF generation (for reports)
-reportlab==4.0.7
-weasyprint==60.2
-
-# QR code generation (for sharing)
-qrcode==7.4.2
-
-# Barcode generation
-python-barcode==0.15.1
-
-# Image optimization
-imageio==2.33.0
-
-# Mathematical operations
-scipy==1.11.4
-
-# Machine learning (future features)
-scikit-learn==1.3.2
-
-# Natural language processing
-nltk==3.8.1
-textblob==0.17.1
-
-# Fuzzy matching (artist name matching)
-fuzzywuzzy==0.18.0
-python-Levenshtein==0.23.0
-
-# Geocoding (location services)
-geopy==2.4.1
-
-# Social media APIs (future enhancement)
-tweepy==4.14.0  # Twitter API
-python-instagram==1.3.2  # Instagram API
-
-# Music information retrieval
-librosa==0.10.1  # Audio analysis
-spotipy==2.23.0  # Enhanced Spotify integration
-
-# Data visualization (reports)
-matplotlib==3.8.2
-seaborn==0.13.0
-plotly==5.17.0
-
-# Statistical analysis
-statsmodels==0.14.0
-
-# Time series analysis
-prophet==1.1.5
-
-# Workflow automation
-luigi==3.4.0
-prefect==2.14.11
-
-# Data pipeline
-apache-airflow==2.7.3
-
-# Search functionality
-elasticsearch==8.11.0
-whoosh==2.7.4
-
-# Graph databases (artist relationships)
-neo4j==5.14.1
-networkx==3.2.1
-
-# Message queues
-pika==1.3.2  # RabbitMQ
-kombu==5.3.4  # Message queue abstraction
-
-# Stream processing
-kafka-python==2.0.2
-
-# Data compression
-lz4==4.3.2
-zstandard==0.22.0
-
-# Protocol buffers
-protobuf==4.25.1
-
-# gRPC (microservices)
-grpcio==1.59.3
-grpcio-tools==1.59.3
-
-# Service discovery
-consul-python==1.1.0
-python-etcd==0.4.5
-
-# Distributed tracing
-opentelemetry-api==1.21.0
-opentelemetry-sdk==1.21.0
-jaeger-client==4.8.0
-
-# Circuit breaker pattern
-pybreaker==1.0.1
-
-# Retries with exponential backoff
-tenacity==8.2.3
-
-# Feature store
-feast==0.35.0
-
-# A/B testing
-split-io==9.1.1
-
-# Analytics tracking
-mixpanel==4.10.0
-segment-analytics-python==2.2.3
-
-# Customer data platforms
-rudderstack-python-sdk==2.0.2
-
-# Business intelligence
-superset==3.0.1
-
-# Data warehousing
-dbt-core==1.6.9
-snowflake-connector-python==3.6.0
-
-# Real-time analytics
-apache-superset==3.0.1
-metabase-api==0.3.0
-
-# Data quality
-great-expectations==0.18.2
-pandas-profiling==3.6.6
-
-# Data catalog
-apache-atlas==0.8.4
-datahub==0.11.0
-
-# Compliance and privacy
-anonymizedf==1.0.1
-presidio-analyzer==2.2.34
-
-# Financial calculations
-numpy-financial==1.0.0
-quantlib==1.32
-
-# Currency conversion
-forex-python==1.8
-currencyconverter==0.17.7
-
-# Blockchain integration (future)
-web3==6.12.0
-eth-account==0.10.0
-
-# NFT and crypto tracking
-opensea-api==0.1.5
-coinbase-python==2.1.0
-
-# Social sentiment analysis
-vaderSentiment==3.3.2
-transformers==4.36.0
-
-# Language detection
-langdetect==1.0.9
-polyglot==16.7.4
-
-# Content moderation
-perspective-api==0.2.0
-
-# Cloud services integration
-aws-sdk-python==1.0.0
-azure-sdk-for-python==1.0.0
-google-cloud-sdk==0.1.0
-
-# Serverless deployment
-zappa==0.57.0
-chalice==1.30.0
-
-# Container orchestration
-kubernetes==28.1.0
-docker-compose==1.29.2
-
-# Infrastructure as code
-pulumi==3.93.0
-terraform-python==0.1.0
-
-# Configuration management
-ansible==8.7.0
-salt==3007.0
-
-# Monitoring and alerting
-prometheus-client==0.19.0
-grafana-api==1.0.3
-alertmanager-client==0.1.0
-
-# Log aggregation
-elasticsearch-dsl==8.11.0
-logstash-async==2.6.1
-fluentd-logger==0.10.0
-
-# APM and observability
-elastic-apm==6.20.0
-opentracing==2.4.0
-jaeger-client==4.8.0
-
-# Feature flags and experimentation
-launchdarkly-server-sdk==8.2.1
-optimizely-sdk==4.1.0
-
-# Recommendation engines
-surprise==1.1.3
-implicit==0.7.0
-
-# Graph analytics
-igraph==0.11.3
-graph-tool==2.45
-
-# Time series forecasting
-pmdarima==2.0.4
-neuralprophet==0.6.2
-
-# Anomaly detection
-pyod==1.1.1
-isolation-forest==0.1.2
-
-# Optimization
-cvxpy==1.4.1
-scipy-optimize==1.11.4
-
-# Parallel processing
-joblib==1.3.2
-multiprocessing-logging==0.3.4
-
-# Memory optimization
-pympler==0.9
-
-# Code profiling
-py-spy==0.3.14
-austin-python==1.6.1
-
-# Documentation and help
-rich==13.7.0  # Rich text and formatting
-typer==0.9.0  # Modern CLI framework
-
-# Development workflow
-pre-commit==3.6.0
-commitizen==3.13.0
-
-# Dependency management
-pip-tools==7.3.0
-pipenv==2023.11.15
-
-# Security scanning
-bandit==1.7.5
-safety==2.3.4
-
-# License compliance
-pip-licenses==4.3.2
-licensecheck==2023.1.1
-
-# Code complexity analysis
-radon==6.0.1
-xenon==0.9.1
-
-# Performance benchmarking
-pytest-benchmark==4.0.0
-asv==0.6.1
-
-# Accessibility testing
-axe-selenium-python==2.1.6
-pa11y==0.1.0
-
-# Browser automation (for web testing)
-selenium==4.16.0
-playwright==1.40.0
-
-# Mobile app testing
-appium-python-client==3.1.1
-
-# Load testing
-artillery==1.7.9
-gatling==3.9.5
-
-# Chaos engineering
-chaostoolkit==1.17.0
-litmus==2.14.0
-
-# Data generation
-factory-boy==3.3.0
-mimesis==11.1.0
-
-# Mock services
-responses==0.24.1
-httpretty==1.1.4
-
-# Contract testing
-pact-python==2.2.0
-dredd-hooks==0.2.0
-
-# Visual regression testing
-percy-python==2.0.2
-chromatic==0.1.0
-
-# Accessibility monitoring
-axe-core==4.8.2
-
-# Performance monitoring (real user monitoring)
-speedcurve==0.2.0
-pingdom==0.1.0
-
-# Uptime monitoring
-uptimerobot==0.2.0
-statuspage==0.1.0
+# Development Dependencies (commented out for production)
+# pytest==7.4.3
+# pytest-flask==1.3.0
+# black==23.11.0
+# flake8==6.1.0
+
+# Optional: PDF Generation (uncomment if needed)
+# reportlab==4.0.7
+
+# Optional: Advanced Excel features (already included above)
+# xlsxwriter==3.1.9
+
+# Optional: System monitoring (uncomment if needed)
+# psutil==5.9.6
+
+# Optional: Rate limiting (built into the app)
+# ratelimit==2.2.1
+
+# Optional: Background tasks (uncomment if implementing)
+# celery==5.3.4
+# redis==5.0.1
