@@ -1066,6 +1066,240 @@ def export_leads():
             'service': 'Prism Analytics Engine'
         }), 500
 
+# Add this to your src/api/routes.py file
+
+@app.route('/api/analyze-isrc-enhanced', methods=['POST'])
+def analyze_isrc_enhanced():
+    """
+    Enhanced ISRC analysis with comprehensive track metadata for distribution teams
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'isrc' not in data:
+            return jsonify({
+                'error': 'ISRC required in request body',
+                'service': 'Prism Analytics Engine'
+            }), 400
+        
+        # Validate ISRC
+        is_valid, result = validate_isrc(data['isrc'])
+        if not is_valid:
+            return jsonify({
+                'error': f'Invalid ISRC: {result}',
+                'service': 'Prism Analytics Engine'
+            }), 400
+        
+        isrc = result  # Use cleaned ISRC
+        
+        # Import the enhanced collector
+        from src.services.enhanced_track_metadata import EnhancedTrackMetadataCollector
+        
+        # Initialize enhanced collector
+        enhanced_collector = EnhancedTrackMetadataCollector(rate_limiter)
+        
+        logger.info(f"Starting enhanced processing for ISRC: {isrc}")
+        start_time = time.time()
+        
+        # Collect comprehensive track metadata
+        track_metadata = enhanced_collector.collect_comprehensive_track_data(isrc)
+        
+        processing_time = round(time.time() - start_time, 2)
+        
+        # Convert to JSON-serializable format
+        result = {
+            'isrc': track_metadata.isrc,
+            'status': 'completed',
+            'processing_time': processing_time,
+            
+            # Basic Information
+            'track_data': {
+                'title': track_metadata.title,
+                'artist': track_metadata.artist,
+                'album': track_metadata.album,
+                'duration_ms': track_metadata.duration_ms,
+                'release_date': track_metadata.release_date.isoformat() if track_metadata.release_date else None,
+                'genre': track_metadata.genre,
+                'tags': track_metadata.tags
+            },
+            
+            # Comprehensive Credits
+            'credits': {
+                'composers': track_metadata.credits.composers,
+                'lyricists': track_metadata.credits.lyricists,
+                'producers': track_metadata.credits.producers,
+                'performers': track_metadata.credits.performers,
+                'engineers': track_metadata.credits.engineers,
+                'other_credits': track_metadata.credits.other_credits
+            },
+            
+            # Lyrics Information
+            'lyrics': {
+                'content': track_metadata.lyrics,
+                'language': track_metadata.lyrics_language,
+                'copyright': track_metadata.lyrics_copyright,
+                'source': 'Available' if track_metadata.lyrics else None
+            },
+            
+            # Technical Details
+            'technical': {
+                'key': track_metadata.key,
+                'tempo_bpm': track_metadata.tempo_bpm,
+                'time_signature': track_metadata.time_signature,
+                'energy': track_metadata.energy,
+                'valence': track_metadata.valence,
+                'danceability': track_metadata.danceability,
+                'acousticness': track_metadata.acousticness,
+                'instrumentalness': track_metadata.instrumentalness,
+                'speechiness': track_metadata.speechiness,
+                'loudness': track_metadata.loudness
+            },
+            
+            # Publishing & Rights
+            'rights': {
+                'publisher': track_metadata.publisher,
+                'record_label': track_metadata.record_label,
+                'copyright_info': track_metadata.copyright_info,
+                'publishing_splits': track_metadata.publishing_splits
+            },
+            
+            # Platform Information
+            'platform_availability': track_metadata.platform_availability,
+            'platform_ids': track_metadata.platform_ids,
+            
+            # Recording Information
+            'recording_info': {
+                'location': track_metadata.recording_location,
+                'date': track_metadata.recording_date.isoformat() if track_metadata.recording_date else None
+            },
+            
+            # Metadata
+            'data_sources_used': track_metadata.data_sources,
+            'confidence_score': track_metadata.confidence_score,
+            'service': 'Prism Analytics Engine',
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"Enhanced ISRC {isrc} processed successfully in {processing_time}s")
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in analyze_isrc_enhanced: {e}")
+        return jsonify({
+            'error': f'Enhanced processing failed: {str(e)}',
+            'service': 'Prism Analytics Engine',
+            'isrc': data.get('isrc', 'unknown') if 'data' in locals() else 'unknown'
+        }), 500
+
+
+# Also add a route to get enhanced track data for existing tracks
+@app.route('/api/track/<isrc>/enhanced', methods=['GET'])
+def get_enhanced_track_data(isrc):
+    """
+    Get enhanced track data for a specific ISRC
+    """
+    try:
+        # Validate ISRC
+        is_valid, result = validate_isrc(isrc)
+        if not is_valid:
+            return jsonify({
+                'error': f'Invalid ISRC: {result}',
+                'service': 'Prism Analytics Engine'
+            }), 400
+        
+        clean_isrc = result
+        
+        # Import the enhanced collector
+        from src.services.enhanced_track_metadata import EnhancedTrackMetadataCollector
+        
+        # Initialize enhanced collector
+        enhanced_collector = EnhancedTrackMetadataCollector(rate_limiter)
+        
+        # Collect comprehensive track metadata
+        track_metadata = enhanced_collector.collect_comprehensive_track_data(clean_isrc)
+        
+        # Convert to JSON-serializable format (same as above)
+        result = {
+            'isrc': track_metadata.isrc,
+            'status': 'completed',
+            
+            # Basic Information
+            'track_data': {
+                'title': track_metadata.title,
+                'artist': track_metadata.artist,
+                'album': track_metadata.album,
+                'duration_ms': track_metadata.duration_ms,
+                'release_date': track_metadata.release_date.isoformat() if track_metadata.release_date else None,
+                'genre': track_metadata.genre,
+                'tags': track_metadata.tags
+            },
+            
+            # Comprehensive Credits
+            'credits': {
+                'composers': track_metadata.credits.composers,
+                'lyricists': track_metadata.credits.lyricists,
+                'producers': track_metadata.credits.producers,
+                'performers': track_metadata.credits.performers,
+                'engineers': track_metadata.credits.engineers,
+                'other_credits': track_metadata.credits.other_credits
+            },
+            
+            # Lyrics Information
+            'lyrics': {
+                'content': track_metadata.lyrics,
+                'language': track_metadata.lyrics_language,
+                'copyright': track_metadata.lyrics_copyright,
+                'source': 'Available' if track_metadata.lyrics else None
+            },
+            
+            # Technical Details
+            'technical': {
+                'key': track_metadata.key,
+                'tempo_bpm': track_metadata.tempo_bpm,
+                'time_signature': track_metadata.time_signature,
+                'energy': track_metadata.energy,
+                'valence': track_metadata.valence,
+                'danceability': track_metadata.danceability,
+                'acousticness': track_metadata.acousticness,
+                'instrumentalness': track_metadata.instrumentalness,
+                'speechiness': track_metadata.speechiness,
+                'loudness': track_metadata.loudness
+            },
+            
+            # Publishing & Rights
+            'rights': {
+                'publisher': track_metadata.publisher,
+                'record_label': track_metadata.record_label,
+                'copyright_info': track_metadata.copyright_info,
+                'publishing_splits': track_metadata.publishing_splits
+            },
+            
+            # Platform Information
+            'platform_availability': track_metadata.platform_availability,
+            'platform_ids': track_metadata.platform_ids,
+            
+            # Recording Information
+            'recording_info': {
+                'location': track_metadata.recording_location,
+                'date': track_metadata.recording_date.isoformat() if track_metadata.recording_date else None
+            },
+            
+            # Metadata
+            'data_sources_used': track_metadata.data_sources,
+            'confidence_score': track_metadata.confidence_score,
+            'service': 'Prism Analytics Engine',
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in get_enhanced_track_data: {e}")
+        return jsonify({
+            'error': f'Failed to fetch enhanced track data: {str(e)}',
+            'service': 'Prism Analytics Engine'
+        }), 500
+
 # Dashboard statistics
 @app.route('/api/dashboard/stats', methods=['GET'])
 def dashboard_stats():
