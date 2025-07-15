@@ -19,7 +19,6 @@ import Settings from './components/Settings';
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
-// Utility function for API calls
 const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   const response = await fetch(url, {
@@ -107,6 +106,106 @@ const PrismLoading = ({ message = "Loading..." }) => (
   </div>
 );
 
+// Rate Limit Display Component
+const formatRateLimit = (api, status) => {
+  if (!status) return { display: 'N/A', color: 'text-gray-500', description: 'Not configured' };
+
+  const getUsageColor = (used, limit) => {
+    const percentage = (used / limit) * 100;
+    if (percentage >= 90) return 'text-red-600';
+    if (percentage >= 70) return 'text-yellow-600';
+    return 'text-green-600';
+  };
+
+  switch (api) {
+    case 'musicbrainz':
+      if (status.second_limit) {
+        const used = status.requests_this_second || 0;
+        const limit = status.second_limit;
+        return {
+          display: `${used}/${limit}/sec`,
+          color: getUsageColor(used, limit),
+          description: '1 request per second (respectful usage)'
+        };
+      }
+      const usedMin = status.requests_this_minute || 0;
+      const limitMin = status.minute_limit || 50;
+      return {
+        display: `${usedMin}/${limitMin}/min`,
+        color: getUsageColor(usedMin, limitMin),
+        description: '~50 requests per minute'
+      };
+
+    case 'spotify':
+      const spotifyUsed = status.requests_this_minute || 0;
+      const spotifyLimit = status.minute_limit || 100;
+      return {
+        display: `${spotifyUsed}/${spotifyLimit}/min`,
+        color: getUsageColor(spotifyUsed, spotifyLimit),
+        description: '~100 requests per minute (varies by endpoint)'
+      };
+
+    case 'youtube':
+      if (status.quota_limit_daily) {
+        const quotaUsed = status.quota_used_today || 0;
+        const quotaLimit = status.quota_limit_daily;
+        return {
+          display: `${quotaUsed.toLocaleString()}/${quotaLimit.toLocaleString()}`,
+          color: getUsageColor(quotaUsed, quotaLimit),
+          description: 'Daily quota units (search=100, details=1)'
+        };
+      }
+      return {
+        display: 'Not configured',
+        color: 'text-gray-500',
+        description: 'YouTube API key not set'
+      };
+
+    case 'lastfm':
+      if (status.second_limit) {
+        const used = status.requests_this_second || 0;
+        const limit = status.second_limit;
+        return {
+          display: `${used}/${limit}/sec`,
+          color: getUsageColor(used, limit),
+          description: '5 requests per second when authenticated'
+        };
+      }
+      const lastfmUsedMin = status.requests_this_minute || 0;
+      const lastfmLimitMin = status.minute_limit || 200;
+      return {
+        display: `${lastfmUsedMin}/${lastfmLimitMin}/min`,
+        color: getUsageColor(lastfmUsedMin, lastfmLimitMin),
+        description: '~200 requests per minute'
+      };
+
+    case 'discogs':
+      if (status.second_limit) {
+        const used = status.requests_this_second || 0;
+        const limit = status.second_limit;
+        return {
+          display: `${used}/${limit}/sec`,
+          color: getUsageColor(used, limit),
+          description: '1 request per second, 60 per minute'
+        };
+      }
+      const discogsUsedMin = status.requests_this_minute || 0;
+      const discogsLimitMin = status.minute_limit || 60;
+      return {
+        display: `${discogsUsedMin}/${discogsLimitMin}/min`,
+        color: getUsageColor(discogsUsedMin, discogsLimitMin),
+        description: '60 requests per minute'
+      };
+
+    default:
+      return {
+        display: 'Unknown',
+        color: 'text-gray-500',
+        description: 'Unknown API'
+      };
+  }
+};
+
 const App = () => {
   const [systemStatus, setSystemStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -114,6 +213,9 @@ const App = () => {
 
   useEffect(() => {
     fetchSystemStatus();
+    // Refresh status every 30 seconds
+    const interval = setInterval(fetchSystemStatus, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchSystemStatus = async () => {
@@ -122,6 +224,12 @@ const App = () => {
       setSystemStatus(status);
     } catch (error) {
       console.error('Failed to fetch system status:', error);
+      // Set fallback status
+      setSystemStatus({
+        database_status: 'disconnected',
+        youtube_integration: { status: 'unavailable', api_key_configured: false },
+        rate_limits: {}
+      });
     } finally {
       setLoading(false);
     }
@@ -154,9 +262,9 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 bg-white shadow-sm border-b border-gray-200 z-50">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <PrismLogo className="h-12 w-20" />
@@ -204,9 +312,11 @@ const App = () => {
         </div>
       </header>
 
-      <div className="flex">
-        {/* Sidebar Navigation */}
-        <nav className="w-64 bg-white shadow-sm min-h-screen border-r border-gray-200">
+      {/* Main Layout with Fixed Sidebar */}
+      <div className="flex pt-20"> {/* Added top padding for fixed header */}
+        {/* Fixed Sidebar Navigation */}
+        <nav className="fixed left-0 w-64 bg-white shadow-sm border-r border-gray-200 z-40 overflow-y-auto" 
+             style={{ height: 'calc(100vh - 80px)', top: '80px' }}>
           <div className="p-4">
             <div className="space-y-2">
               {navigationItems.map((item) => {
@@ -229,29 +339,63 @@ const App = () => {
             </div>
           </div>
 
-          {/* API Status Panel */}
-          {systemStatus && (
+          {/* API Rate Limits Panel */}
+          {systemStatus?.rate_limits && (
             <div className="p-4 border-t border-gray-200">
               <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                API STATUS
+                API RATE LIMITS
               </h3>
-              <div className="space-y-2">
-                {Object.entries(systemStatus.rate_limits || {}).map(([api, status]) => (
-                  <div key={api} className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600 capitalize tracking-wide">{api.toUpperCase()}</span>
-                    <span className={`font-medium font-mono ${
-                      status.minute_remaining > 10 ? 'text-green-600' : 
-                      status.minute_remaining > 0 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
-                      {status.minute_remaining}/{status.minute_limit}
-                    </span>
+              
+              <div className="space-y-3">
+                {Object.entries(systemStatus.rate_limits).map(([api, status]) => {
+                  const limitInfo = formatRateLimit(api, status);
+                  
+                  return (
+                    <div key={api} className="group relative">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600 capitalize tracking-wide font-medium">
+                          {api.toUpperCase()}
+                        </span>
+                        <span className={`font-medium font-mono ${limitInfo.color}`}>
+                          {limitInfo.display}
+                        </span>
+                      </div>
+                      
+                      {/* Tooltip on hover */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute left-0 top-full mt-1 z-50 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap pointer-events-none">
+                        {limitInfo.description}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div className="mt-4 pt-3 border-t border-gray-100">
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center justify-between text-gray-500">
+                    <span>Usage indicators:</span>
                   </div>
-                ))}
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-gray-500">Good</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                      <span className="text-gray-500">High</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span className="text-gray-500">Limit</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Prism Branding Footer */}
+          {/* Prism Branding Footer - Fixed at bottom */}
           <div className="absolute bottom-4 left-4 right-4">
             <div className="text-center">
               <PrismLogo className="h-8 w-16 mx-auto mb-2 opacity-60" />
@@ -268,9 +412,11 @@ const App = () => {
           </div>
         </nav>
 
-        {/* Main Content */}
-        <main className="flex-1 p-6 bg-white">
-          {renderActiveComponent()}
+        {/* Main Content - Adjusted for fixed sidebar */}
+        <main className="flex-1 ml-64 min-h-screen bg-white">
+          <div className="p-6">
+            {renderActiveComponent()}
+          </div>
         </main>
       </div>
     </div>

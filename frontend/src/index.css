@@ -14,21 +14,87 @@
 }
 
 /* Base Styles */
-body {
+html, body {
+  height: 100%;
   margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
   font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--prism-white);
   color: var(--prism-black);
+  line-height: 1.6;
+}
+
+#root {
+  height: 100%;
+  min-height: 100vh;
 }
 
 code {
   font-family: 'Consolas', 'Monaco', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-/* Custom component classes */
+/* Layout Components */
 @layer components {
+  /* Header Styles */
+  .prism-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--prism-white);
+    border-bottom: 1px solid var(--prism-light-gray);
+    box-shadow: 0 1px 3px 0 rgba(26, 26, 26, 0.1);
+    height: 80px;
+  }
+
+  /* Sidebar Styles */
+  .prism-sidebar {
+    position: fixed;
+    left: 0;
+    top: 80px;
+    bottom: 0;
+    width: 256px; /* 16rem = 256px */
+    background: var(--prism-white);
+    border-right: 1px solid var(--prism-light-gray);
+    z-index: 40;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Custom scrollbar for sidebar */
+  .prism-sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .prism-sidebar::-webkit-scrollbar-track {
+    background: var(--prism-light-gray);
+  }
+
+  .prism-sidebar::-webkit-scrollbar-thumb {
+    background: var(--prism-red);
+    border-radius: 3px;
+  }
+
+  .prism-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #b8070f;
+  }
+
+  /* Main Content Styles */
+  .prism-main {
+    margin-left: 256px; /* Width of sidebar */
+    margin-top: 80px; /* Height of header */
+    min-height: calc(100vh - 80px);
+    background: var(--prism-white);
+  }
+
+  /* Typography */
   .tracking-wide {
     letter-spacing: 0.1em;
   }
@@ -89,11 +155,232 @@ code {
   .border-prism-charcoal-gray {
     border-color: var(--prism-charcoal-gray);
   }
+
+  /* Navigation Styles */
+  .prism-nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    color: var(--prism-medium-gray);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    border: 1px solid transparent;
+    width: 100%;
+    text-align: left;
+    background: none;
+  }
+
+  .prism-nav-item:hover {
+    background: var(--prism-light-gray);
+    color: var(--prism-black);
+  }
+
+  .prism-nav-item.active {
+    background: rgba(229, 9, 20, 0.1);
+    color: var(--prism-red);
+    border-color: rgba(229, 9, 20, 0.2);
+  }
+
+  /* Card Styles */
+  .prism-card {
+    background: var(--prism-white);
+    border: 1px solid var(--prism-light-gray);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(26, 26, 26, 0.1), 0 1px 2px 0 rgba(26, 26, 26, 0.06);
+    transition: all 0.2s ease-in-out;
+  }
+
+  .prism-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.1), 0 2px 4px -1px rgba(229, 9, 20, 0.06);
+    border-color: var(--prism-red);
+  }
+
+  /* Button Styles */
+  .prism-button {
+    background: var(--prism-red);
+    color: var(--prism-white);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease-in-out;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+  }
+
+  .prism-button:hover {
+    background: #b8070f;
+    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .prism-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.3);
+  }
+
+  .prism-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px -1px rgba(229, 9, 20, 0.3);
+  }
+
+  .prism-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Input Styles */
+  .prism-input {
+    border: 1px solid var(--prism-light-gray);
+    border-radius: 0.375rem;
+    background: var(--prism-white);
+    color: var(--prism-black);
+    transition: all 0.2s ease-in-out;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    width: 100%;
+  }
+
+  .prism-input:focus {
+    outline: none;
+    border-color: var(--prism-red);
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
+  }
+
+  .prism-input::placeholder {
+    color: var(--prism-medium-gray);
+  }
+
+  /* Status Indicators */
+  .status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-indicator.connected {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+  }
+
+  .status-indicator.disconnected {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+
+  .status-indicator.warning {
+    background: #fefce8;
+    color: #a16207;
+    border: 1px solid #fef08a;
+  }
+
+  /* Loading States */
+  .prism-loading {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid var(--prism-light-gray);
+    border-radius: 50%;
+    border-top-color: var(--prism-red);
+    animation: spin 1s ease-in-out infinite;
+  }
+
+  .prism-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Table Styles */
+  .prism-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--prism-white);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px 0 rgba(26, 26, 26, 0.1);
+  }
+
+  .prism-table-header {
+    background: var(--prism-light-gray);
+    color: var(--prism-charcoal-gray);
+    font-weight: 500;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid var(--prism-light-gray);
+    text-align: left;
+  }
+
+  .prism-table-cell {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--prism-light-gray);
+    color: var(--prism-black);
+    font-size: 0.875rem;
+  }
+
+  .prism-table-row:hover {
+    background: rgba(248, 249, 250, 0.5);
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .prism-sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+      z-index: 60;
+    }
+    
+    .prism-sidebar.open {
+      transform: translateX(0);
+    }
+    
+    .prism-main {
+      margin-left: 0;
+    }
+
+    .prism-header h1 {
+      font-size: 1rem;
+    }
+
+    .tracking-widest {
+      letter-spacing: 0.1em;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .prism-main {
+      padding: 1rem;
+    }
+
+    .prism-table-cell {
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+    }
+  }
 }
 
 /* Custom animations */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to { 
+    transform: rotate(360deg); 
+  }
 }
 
 @keyframes pulse {
@@ -101,14 +388,154 @@ code {
     opacity: 1;
   }
   50% {
-    opacity: .5;
+    opacity: 0.5;
   }
 }
 
+@keyframes shimmer {
+  0% { 
+    transform: translateX(-100%); 
+  }
+  100% { 
+    transform: translateX(100%); 
+  }
+}
+
+/* Utility Classes */
 .animate-spin {
   animation: spin 1s linear infinite;
 }
 
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* API Status Colors */
+.api-status-good {
+  color: #16a34a;
+}
+
+.api-status-warning {
+  color: #ca8a04;
+}
+
+.api-status-danger {
+  color: #dc2626;
+}
+
+/* Tooltip Styles */
+.tooltip {
+  position: relative;
+}
+
+.tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--prism-black);
+  color: var(--prism-white);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  z-index: 100;
+}
+
+/* Focus States for Accessibility */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--prism-red);
+  outline-offset: 2px;
+}
+
+/* Ensure proper z-index stacking */
+.dropdown-menu,
+.modal {
+  z-index: 70;
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 0.25rem;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Print styles */
+@media print {
+  .prism-sidebar,
+  .prism-header {
+    display: none;
+  }
+  
+  .prism-main {
+    margin: 0;
+    box-shadow: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .prism-card {
+    border-width: 2px;
+  }
+  
+  .prism-button {
+    border: 2px solid var(--prism-black);
+  }
+  
+  .prism-input {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .animate-spin,
+  .animate-pulse {
+    animation: none;
+  }
+}
+
+/* Dark mode preparation (for future implementation) */
+@media (prefers-color-scheme: dark) {
+  /* Will be implemented in future versions */
 }
