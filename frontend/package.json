@@ -35,7 +35,7 @@
     "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write src/**/*.{js,jsx,ts,tsx,css,md}",
     "type-check": "tsc --noEmit",
-    "prepare": "husky install",
+    "prepare": "node scripts/husky-install.js",
     "serve": "npx serve -s build -l 3000",
     "docker:build": "docker build -t prism-analytics-frontend .",
     "docker:run": "docker run -p 3000:3000 prism-analytics-frontend"
