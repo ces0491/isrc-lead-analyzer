@@ -115,4 +115,3 @@ html5lib==1.1
 
 # Enhanced lyrics and metadata APIs (optional)
 genius==3.1.7
-musicbrainz-ngs>=0.8
