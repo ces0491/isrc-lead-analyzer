@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Music, 
@@ -13,10 +14,8 @@ import {
   Save,
   RefreshCw,
   Mail,
-  FileText,
-  Zap
+  FileText
 } from 'lucide-react';
-import EnhancedTrackViewer from './EnhancedTrackViewer';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
@@ -39,17 +38,13 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 const ISRCAnalyzer = () => {
+  const navigate = useNavigate();
   const [isrc, setIsrc] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [includeYoutube, setIncludeYoutube] = useState(true);
   const [saveToDb, setSaveToDb] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(false);
-  
-  // Enhanced analysis state
-  const [showEnhancedView, setShowEnhancedView] = useState(false);
-  const [enhancedData, setEnhancedData] = useState(null);
-  const [enhancedLoading, setEnhancedLoading] = useState(false);
 
   const validateISRC = (isrcCode) => {
     if (!isrcCode) return false;
@@ -106,42 +101,6 @@ const ISRCAnalyzer = () => {
     }
   };
 
-  // Enhanced analysis function
-  const analyzeEnhanced = async () => {
-    if (!isrc.trim()) return;
-    
-    const formattedISRC = formatISRC(isrc.trim());
-    
-    if (!validateISRC(formattedISRC)) {
-      setResult({ 
-        status: 'error', 
-        error: 'Invalid ISRC format. Expected format: CC-XXX-YY-NNNNN (e.g., USRC17607839)',
-        isrc: formattedISRC
-      });
-      return;
-    }
-    
-    setEnhancedLoading(true);
-    try {
-      const response = await apiCall('/analyze-isrc-enhanced', {
-        method: 'POST',
-        body: JSON.stringify({ isrc: formattedISRC })
-      });
-      
-      setEnhancedData(response);
-      setShowEnhancedView(true);
-    } catch (error) {
-      console.error('Enhanced analysis failed:', error);
-      setResult({ 
-        status: 'error', 
-        error: `Enhanced analysis failed: ${error.message}`,
-        isrc: formattedISRC
-      });
-    } finally {
-      setEnhancedLoading(false);
-    }
-  };
-
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       analyzeISRC();
@@ -168,36 +127,11 @@ const ISRCAnalyzer = () => {
     }
   };
 
-  // Enhanced Track Viewer Modal
-  if (showEnhancedView && enhancedData) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-wide">ENHANCED TRACK ANALYSIS</h2>
-            <p className="text-gray-600">Comprehensive track metadata for distribution teams</p>
-          </div>
-          <button
-            onClick={() => setShowEnhancedView(false)}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium tracking-wide"
-          >
-            ← Back to Analyzer
-          </button>
-        </div>
-        
-        <EnhancedTrackViewer 
-          trackData={enhancedData}
-          onClose={() => setShowEnhancedView(false)}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-wide">ISRC ANALYZER</h2>
-        <p className="text-gray-600">Advanced track analysis and lead discovery with YouTube integration</p>
+        <p className="text-gray-600">Lead scoring and opportunity assessment with YouTube integration</p>
       </div>
 
       {/* Input Section */}
@@ -279,12 +213,12 @@ const ISRCAnalyzer = () => {
             </label>
           </div>
 
-          {/* Analysis Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Analysis Button */}
+          <div className="flex space-x-4">
             <button
               onClick={analyzeISRC}
               disabled={loading || !isrc.trim() || !validateISRC(formatISRC(isrc))}
-              className="bg-red-600 text-white py-3 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium tracking-wide transition-colors"
+              className="flex-1 bg-red-600 text-white py-3 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium tracking-wide transition-colors"
             >
               {loading ? (
                 <div className="flex items-center justify-center">
@@ -294,51 +228,50 @@ const ISRCAnalyzer = () => {
               ) : (
                 <div className="flex items-center justify-center">
                   <Search className="h-5 w-5 mr-2" />
-                  STANDARD ANALYSIS
+                  ANALYZE FOR LEADS
                 </div>
               )}
             </button>
 
             <button
-              onClick={analyzeEnhanced}
-              disabled={enhancedLoading || !isrc.trim() || !validateISRC(formatISRC(isrc))}
+              onClick={() => navigate(`/track/${formatISRC(isrc)}`)}
+              disabled={!isrc.trim() || !validateISRC(formatISRC(isrc))}
               className="bg-purple-600 text-white py-3 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium tracking-wide transition-colors"
             >
-              {enhancedLoading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  ANALYZING...
-                </div>
-              ) : (
-                <div className="flex items-center justify-center">
-                  <Zap className="h-5 w-5 mr-2" />
-                  ENHANCED ANALYSIS
-                </div>
-              )}
+              <div className="flex items-center">
+                <FileText className="h-5 w-5 mr-2" />
+                FULL METADATA
+              </div>
             </button>
           </div>
 
-          {/* Analysis Types Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">📊 STANDARD ANALYSIS</h4>
-              <ul className="space-y-1">
-                <li>• Lead scoring and tier classification</li>
-                <li>• Basic artist and track metadata</li>
-                <li>• YouTube channel discovery</li>
-                <li>• Contact information extraction</li>
-                <li>• Platform availability check</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">⚡ ENHANCED ANALYSIS</h4>
-              <ul className="space-y-1">
-                <li>• Comprehensive track credits & personnel</li>
-                <li>• Full lyrics with copyright information</li>
-                <li>• Technical audio analysis & metrics</li>
-                <li>• Publishing rights & splits breakdown</li>
-                <li>• Recording location & production details</li>
-              </ul>
+          {/* Analysis Info */}
+          <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">📊 LEAD ANALYSIS</h4>
+                <ul className="space-y-1">
+                  <li>• Lead scoring and tier classification (A, B, C, D)</li>
+                  <li>• Independence, opportunity, and geographic scoring</li>
+                  <li>• YouTube channel discovery and analytics</li>
+                  <li>• Contact information extraction</li>
+                  <li>• Platform availability assessment</li>
+                  <li>• Artist and track metadata collection</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">📋 FULL METADATA ANALYSIS</h4>
+                <ul className="space-y-1">
+                  <li>• Complete track credits & personnel database</li>
+                  <li>• Full lyrics with copyright information</li>
+                  <li>• Technical audio analysis & production metrics</li>
+                  <li>• Publishing rights & splits breakdown</li>
+                  <li>• Recording location & production details</li>
+                </ul>
+                <div className="mt-3 p-2 bg-purple-50 border border-purple-200 rounded text-xs">
+                  <strong>Use "Full Metadata" button →</strong> for comprehensive track analysis
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -357,13 +290,22 @@ const ISRCAnalyzer = () => {
                   <div>
                     <div className="flex items-center">
                       <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                      <span className="font-medium text-green-800">Analysis Completed</span>
+                      <span className="font-medium text-green-800">Lead Analysis Completed</span>
                     </div>
                     <p className="text-sm text-green-600 mt-1 font-mono">ISRC: {result.isrc}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-green-600">Processing Time</p>
-                    <p className="font-mono text-green-800">{result.processing_time || 'N/A'}s</p>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <p className="text-sm text-green-600">Processing Time</p>
+                      <p className="font-mono text-green-800">{result.processing_time || 'N/A'}s</p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/track/${result.isrc}`)}
+                      className="px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium tracking-wide transition-colors"
+                    >
+                      <FileText className="h-3 w-3 mr-1 inline" />
+                      FULL METADATA
+                    </button>
                   </div>
                 </div>
               </div>

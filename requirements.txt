@@ -114,5 +114,5 @@ html5lib==1.1
 # redis==5.0.1alembic==1.13.1
 
 # Enhanced lyrics and metadata APIs (optional)
-genius==3.0.0
+genius==3.1.7
 musicbrainz-ngs==0.7.1
