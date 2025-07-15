@@ -10,15 +10,12 @@ import {
   Award,
   FileText,
   Globe,
-  Play,
   Volume2,
   Mic,
-  Piano,
+  Music2,
   Settings,
   Copyright,
-  Eye,
   Download,
-  ExternalLink,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -165,7 +162,7 @@ const EnhancedTrackViewer = ({ trackData, onClose }) => {
               {trackData.credits?.composers?.length > 0 && (
                 <div>
                   <h3 className="font-medium text-gray-900 mb-3 flex items-center tracking-wide">
-                    <Piano className="h-4 w-4 mr-2 text-blue-500" />
+                    <Music2 className="h-4 w-4 mr-2 text-blue-500" />
                     COMPOSERS
                   </h3>
                   <div className="space-y-2">
