@@ -110,4 +110,4 @@ html5lib==1.1
 
 # Optional: Background tasks (uncomment if implementing)
 # celery==5.3.4
-# redis==5.0.1
+# redis==5.0.1alembic==1.13.1
