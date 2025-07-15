@@ -54,7 +54,7 @@ services:
     runtime: static
     buildCommand: |
       cd frontend &&
-      npm ci &&
+      npm ci --ignore-scripts &&
       REACT_APP_API_BASE_URL=https://isrc-analyzer-api.onrender.com/api npm run build
     staticPublishPath: frontend/build
     envVars:
